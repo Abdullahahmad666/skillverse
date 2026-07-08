@@ -7,7 +7,7 @@
 // Secrets: ANTHROPIC_API_KEY, ADMIN_USER_IDS.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, clientIp, isAdmin } from "../_shared/rateLimit.ts";
 
 Deno.serve(async (req) => {
@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
+    return errorResponse("method_not_allowed", "Method not allowed.", 405);
   }
 
   try {
@@ -28,10 +28,10 @@ Deno.serve(async (req) => {
 
     const { data: userData, error: userError } = await userClient.auth.getUser();
     if (userError || !userData.user) {
-      return jsonResponse({ error: "Not signed in." }, 401);
+      return errorResponse("unauthorized", "Not signed in.", 401);
     }
     if (!isAdmin(userData.user.id)) {
-      return jsonResponse({ error: "Admin access required." }, 403);
+      return errorResponse("forbidden", "Admin access required.", 403);
     }
 
     const admin = createClient(
@@ -47,19 +47,19 @@ Deno.serve(async (req) => {
       clientIp(req),
       { userLimit: 3, ipLimit: 5, windowSeconds: 600 },
     );
-    if (!rl.allowed) return jsonResponse({ error: rl.reason }, 429);
+    if (!rl.allowed) return errorResponse("rate_limited", rl.reason ?? "Too many requests.", 429);
 
     const body = await req.json().catch(() => ({}));
     const skillTitle =
       typeof body.skill_title === "string" ? body.skill_title.slice(0, 100) : null;
     const stepCount = Math.min(Math.max(Number(body.step_count) || 12, 5), 20);
     if (!skillTitle) {
-      return jsonResponse({ error: "skill_title is required." }, 400);
+      return errorResponse("invalid_input", "skill_title is required.", 400);
     }
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
-      return jsonResponse({ error: "AI provider key is not configured." }, 500);
+      return errorResponse("server_error", "Service temporarily unavailable.", 500);
     }
 
     const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     if (!aiRes.ok) {
       const detail = await aiRes.text();
       console.error("AI provider error:", detail);
-      return jsonResponse({ error: "AI provider request failed." }, 502);
+      return errorResponse("provider_error", "Service temporarily unavailable.", 502);
     }
 
     const aiData = await aiRes.json();
@@ -108,10 +108,10 @@ Deno.serve(async (req) => {
     try {
       draft = JSON.parse(raw);
     } catch {
-      return jsonResponse(
-        { error: "AI returned malformed JSON.", raw },
-        502,
-      );
+      // Keep the client shape safe; raw provider output goes to the
+      // server log only.
+      console.error("AI returned malformed JSON:", raw);
+      return errorResponse("provider_error", "Service temporarily unavailable.", 502);
     }
 
     return jsonResponse({
@@ -121,6 +121,6 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return jsonResponse({ error: "Unexpected server error." }, 500);
+    return errorResponse("server_error", "Something went wrong. Please try again.", 500);
   }
 });

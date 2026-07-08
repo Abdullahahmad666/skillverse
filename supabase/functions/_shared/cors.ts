@@ -11,3 +11,16 @@ export function jsonResponse(body: unknown, status = 200): Response {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+/**
+ * Safe error shape for clients: a stable machine-readable code plus a
+ * generic human message. Internal details (stack traces, provider errors,
+ * DB messages) must be logged server-side only — never passed here.
+ */
+export function errorResponse(
+  code: string,
+  message: string,
+  status: number,
+): Response {
+  return jsonResponse({ error: message, code }, status);
+}
