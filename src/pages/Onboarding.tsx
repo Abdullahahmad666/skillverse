@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { logEvent } from "../lib/analytics";
 import type { Skill } from "../lib/types";
 
 export function OnboardingPage() {
@@ -55,6 +56,7 @@ export function OnboardingPage() {
     // SECURITY DEFINER function if none is open). Non-fatal: the dashboard
     // retries this idempotent RPC on load.
     await supabase.rpc("join_current_cohort", { p_skill_id: selected });
+    logEvent("skill_started", { skill_id: selected, source: "onboarding" });
     await refreshProfile();
     navigate("/", { replace: true });
   };

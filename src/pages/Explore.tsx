@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { Reveal } from "../components/Reveal";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { supabase } from "../lib/supabase";
+import { friendlyError } from "../lib/messages";
+import { logEvent } from "../lib/analytics";
+import { cleanText, validateEmail } from "../lib/sanitize";
 import type { Skill } from "../lib/types";
 
 interface SkillMeta {
@@ -21,6 +25,7 @@ export function ExplorePage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -70,13 +75,15 @@ export function ExplorePage() {
       .eq("id", user.id);
     if (updateError) {
       setBusyId(null);
-      setError("Couldn't switch skills. Try again.");
+      toast(friendlyError(updateError, "Couldn't switch skills. Please try again."), "error");
       return;
     }
     // Join this skill's open cohort (server-side, idempotent). Progress on
     // previous skills is kept — switching back later restores it.
     await supabase.rpc("join_current_cohort", { p_skill_id: skillId });
+    logEvent("skill_started", { skill_id: skillId, source: "explore" });
     await refreshProfile();
+    toast("Skill started — welcome to your new cohort");
     navigate("/roadmap");
   };
 
@@ -179,18 +186,75 @@ export function ExplorePage() {
       </div>
 
       {filtered.length === 0 && !error && (
-        <div className="mt-8 rounded-3xl border border-dashed border-mist bg-card p-10 text-center">
-          <p className="font-display text-lg font-bold">No skills match “{query.trim()}”</p>
-          <p className="mt-1 text-sm text-fog">
-            More roadmaps are on the way. Try “programming” or “design”, or
-            clear the search.
+        <div className="mt-8 rounded-3xl border border-dashed border-mist bg-card p-8 text-center sm:p-10">
+          <p className="font-display text-lg font-bold">
+            We don't have “{query.trim()}” yet
           </p>
-          <button onClick={() => setQuery("")} className="btn-ghost mt-4">
-            Clear search
+          <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-fog">
+            Want us to build it? Leave your email and we'll let you know when
+            this roadmap ships — requests tell us what to make next.
+          </p>
+          <SkillWaitlist key={query.trim()} skillText={query.trim()} defaultEmail={user?.email ?? ""} />
+          <button onClick={() => setQuery("")} className="mt-4 text-sm font-medium text-jade-deep hover:underline">
+            Clear search instead
           </button>
         </div>
       )}
     </AppShell>
+  );
+}
+
+/** Demand capture for missing skills → rate-limited `request_skill` RPC. */
+function SkillWaitlist({ skillText, defaultEmail }: { skillText: string; defaultEmail: string }) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const { toast } = useToast();
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const cleaned = cleanText(email, 254).toLowerCase();
+    if (validateEmail(cleaned)) {
+      toast("Please enter a valid email.", "error");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.rpc("request_skill", {
+      p_email: cleaned,
+      p_skill: cleanText(skillText, 120),
+    });
+    setBusy(false);
+    if (error) {
+      toast(friendlyError(error, "Couldn't save your request. Please try again."), "error");
+      return;
+    }
+    setSent(true);
+    toast("Request saved — we'll email you when it's ready");
+  };
+
+  if (sent) {
+    return (
+      <p className="mx-auto mt-5 max-w-sm rounded-xl bg-jade-tint px-4 py-3 text-sm font-medium text-jade-deep">
+        You're on the list for “{skillText}”.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="mx-auto mt-5 flex max-w-sm gap-2">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        aria-label="Email for skill request"
+        maxLength={254}
+        className="field !py-2.5 text-sm"
+      />
+      <button type="submit" disabled={busy} className="btn-primary flex-none !px-4 !py-2.5 text-sm">
+        {busy ? "Saving…" : "Notify me"}
+      </button>
+    </form>
   );
 }
 

@@ -4,6 +4,7 @@ import { AppShell } from "../components/AppShell";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { MilestoneMarker, StepCard } from "../components/StepCard";
 import { useRoadmap } from "../hooks/useRoadmap";
+import { logEvent } from "../lib/analytics";
 import type { Milestone, RoadmapStep, StepLevel } from "../lib/types";
 
 type TrailItem =
@@ -80,6 +81,11 @@ export function RoadmapPage() {
     });
     return items;
   }, [steps, milestones]);
+
+  // Funnel: one roadmap_viewed event per visit.
+  useEffect(() => {
+    logEvent("roadmap_viewed");
+  }, []);
 
   // Smooth-scroll to a step when arriving via /roadmap#step-<id>.
   useEffect(() => {

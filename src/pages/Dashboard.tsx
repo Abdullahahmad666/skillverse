@@ -6,6 +6,7 @@ import { ProgressRing } from "../components/ProgressRing";
 import { Reveal } from "../components/Reveal";
 import { Leaderboard } from "../components/Leaderboard";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useRoadmap } from "../hooks/useRoadmap";
 import { useCohort } from "../hooks/useCohort";
 import { useInView, useCountUp } from "../hooks/useInView";
@@ -447,6 +448,7 @@ function LeaderboardOptInPrompt({
   );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const { toast } = useToast();
 
   if (dismissed) return null;
 
@@ -458,12 +460,14 @@ function LeaderboardOptInPrompt({
       .update({ show_on_leaderboard: true })
       .eq("id", userId);
     if (error) {
+      console.error(error);
       setBusy(false);
       setFailed(true);
       return;
     }
     await onJoined();
     setBusy(false);
+    toast("You're on the leaderboard");
   };
 
   const dismiss = () => {

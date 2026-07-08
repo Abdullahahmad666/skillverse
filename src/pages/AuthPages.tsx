@@ -2,6 +2,9 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import { GENERIC_ERROR } from "../lib/messages";
+import { logEvent } from "../lib/analytics";
 import {
   cleanText,
   validateEmail,
@@ -99,10 +102,13 @@ export function LoginPage() {
     });
     setBusy(false);
     if (authError) {
+      // Anti-enumeration: the same message whether the email is unknown or
+      // the password is wrong. Real cause goes to the console only.
+      console.error(authError);
       setError(
-        authError.message === "Invalid login credentials"
-          ? "Email or password is incorrect."
-          : authError.message,
+        authError.name === "AuthRetryableFetchError"
+          ? GENERIC_ERROR
+          : "Invalid email or password.",
       );
       return;
     }
@@ -189,13 +195,19 @@ export function SignUpPage() {
     });
     setBusy(false);
 
-    if (authError) return setError(authError.message);
+    if (authError) {
+      console.error(authError);
+      setError("We couldn't create your account. Please check your details and try again.");
+      return;
+    }
 
-    // If email confirmation is on, there's no session yet.
+    // If email confirmation is on, there's no session yet (the signup event
+    // is then skipped — log_event requires an authenticated session).
     if (!data.session) {
       setInfo("Check your inbox — confirm your email, then sign in.");
       return;
     }
+    logEvent("signup");
     navigate("/onboarding", { replace: true });
   };
 
@@ -283,8 +295,10 @@ export function ForgotPasswordPage() {
       { redirectTo: `${window.location.origin}/reset-password` },
     );
     setBusy(false);
-    if (resetError) return setError(resetError.message);
-    setInfo("If an account exists for that email, a reset link is on its way.");
+    // Anti-enumeration: identical outcome whether or not the email exists.
+    // A failure here (e.g. rate limit) is logged, never surfaced differently.
+    if (resetError) console.error(resetError);
+    setInfo("If that email is registered, you'll get a reset link.");
   };
 
   return (
@@ -331,6 +345,7 @@ export function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     // The email link signs the user into a recovery session.
@@ -351,7 +366,12 @@ export function ResetPasswordPage() {
     setBusy(true);
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setBusy(false);
-    if (updateError) return setError(updateError.message);
+    if (updateError) {
+      console.error(updateError);
+      setError("Couldn't save your new password. Request a fresh reset link and try again.");
+      return;
+    }
+    toast("Password updated");
     navigate("/", { replace: true });
   };
 

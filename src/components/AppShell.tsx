@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
+import { LoadingScreen } from "./LoadingScreen";
 import { DISCORD_URL } from "../lib/supabase";
 
 const tabs = [
@@ -13,14 +14,30 @@ const tabs = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+    if (signingOut) return;
+    setSigningOut(true);
+    // A tiny floor keeps the overlay from flashing; the real wait is signOut.
+    await Promise.all([
+      signOut().catch((e) => console.error(e)),
+      new Promise((r) => setTimeout(r, 400)),
+    ]);
+    navigate("/login", { replace: true });
   };
 
   return (
     <div className="flex min-h-screen flex-col">
+      {signingOut && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-paper/95 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <LoadingScreen label="Signing out" />
+        </div>
+      )}
       <header className="sticky top-0 z-20 border-b border-mist/70 bg-paper/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <NavLink to="/" className="flex items-center gap-2">

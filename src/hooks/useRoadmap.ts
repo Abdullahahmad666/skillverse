@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { friendlyError } from "../lib/messages";
+import { logEvent } from "../lib/analytics";
 import type {
   Milestone,
   Resource,
@@ -90,9 +92,7 @@ export function useRoadmap(): RoadmapData {
         setResources((resourcesRes.data ?? []) as Resource[]);
       } catch (e) {
         if (active) {
-          setError(
-            e instanceof Error ? e.message : "Couldn't load your roadmap.",
-          );
+          setError(friendlyError(e, "Couldn't load your roadmap. Refresh to try again."));
         }
       } finally {
         if (active) setLoading(false);
@@ -217,11 +217,13 @@ export function useRoadmap(): RoadmapData {
 
       if (upsertError) {
         // Roll back.
+        console.error(upsertError);
         setProgress(progress);
         setError("Couldn't save your progress. Check your connection and try again.");
         return;
       }
       setError(null);
+      if (status === "done") logEvent("step_completed", { step_id: stepId });
       const confirmed = [
         ...progress.filter((p) => p.step_id !== stepId),
         data as UserProgress,

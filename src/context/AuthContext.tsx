@@ -70,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    // Clear client state immediately rather than waiting for the auth event.
+    setSession(null);
+    setProfile(null);
   }, []);
 
   return (
