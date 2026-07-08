@@ -21,7 +21,10 @@ A curated, step-by-step roadmap app for beginners. One skill (Web Development) w
    function, per Supabase linter guidance), and finally
    `supabase/migrations/0004_levels_and_more_skills.sql` (adds
    beginner/intermediate/advanced levels to roadmap steps and seeds two more
-   skills: Python Programming and UX Design).
+   skills: Python Programming and UX Design), then
+   `supabase/migrations/0005_feedback_analytics.sql` (feedback, skill
+   requests, and funnel events — RLS-locked tables written only through
+   rate-limited security-definer RPCs; reads are admin/service-role only).
 4. In **Authentication → Providers**, make sure Email is enabled. In
    **Authentication → URL Configuration**, add your site URL(s) — including
    `http://localhost:5173` for local dev — so password-reset redirect links work.
@@ -140,6 +143,28 @@ display name, username, avatar, and milestone count. `get_cohort_standing` retur
 pure aggregates (member count, members behind you) so opted-out members are
 counted anonymously but never listed. Opt-out is enforced at the DB layer —
 no client query can return an opted-out user.
+
+## Feedback & launch analytics (V2.3)
+
+- **Feedback widget** (floating button on every page, works signed out):
+  writes rating + optional message via the `submit_feedback` RPC — max 5 per
+  caller per hour, keyed by user id or client IP.
+- **Skill requests**: when an Explore search has no match, users can leave an
+  email via `request_skill` (max 3/hour per caller) — demand per skill lands
+  in `skill_requests`.
+- **Funnel events** (`signup`, `skill_started`, `step_completed`,
+  `roadmap_viewed`, `feedback_submitted`) go to the `events` table via the
+  authenticated-only `log_event` RPC (name whitelist + rate limit in the DB).
+  Note: with email confirmation enabled the `signup` event is skipped (no
+  session exists yet at signup time).
+- All three tables have **RLS enabled with zero policies** — clients cannot
+  read or write them directly; the definer RPCs are the only write path, and
+  reads happen in the Supabase dashboard (service role) only. Text is
+  control-character-stripped and length-capped in the database on the way in.
+- **User-facing messages**: `src/lib/messages.ts` maps internal errors to
+  safe copy (real errors go to the console only); `ToastContext` is the
+  single notification layer. Login and password reset are anti-enumeration:
+  identical responses whether or not the email exists.
 
 ## Security checklist (already implemented)
 

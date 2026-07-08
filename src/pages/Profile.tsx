@@ -5,6 +5,8 @@ import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
 import { useRoadmap } from "../hooks/useRoadmap";
 import { supabase } from "../lib/supabase";
+import { useToast } from "../context/ToastContext";
+import { friendlyError } from "../lib/messages";
 import {
   cleanText,
   validateAvatarUrl,
@@ -31,6 +33,7 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (profile) {
@@ -77,12 +80,13 @@ export function ProfilePage() {
       setError(
         updateError.code === "23505"
           ? "That username is taken. Try another."
-          : "Couldn't save your profile. Try again.",
+          : friendlyError(updateError, "Couldn't save your profile. Please try again."),
       );
       return;
     }
     await refreshProfile();
     setSaved(true);
+    toast("Profile saved");
   };
 
   const achievedCount = Object.keys(achievedMilestones).length;
