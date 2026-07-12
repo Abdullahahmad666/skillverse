@@ -49,7 +49,7 @@ export function ProgressRing({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="#DEE8E3"
+            stroke="var(--ring-track)"
             strokeWidth={stroke}
           />
           <circle
@@ -70,7 +70,7 @@ export function ProgressRing({
             cx={dotX}
             cy={dotY}
             r={stroke / 2 + 1.5}
-            fill="#fff"
+            fill="rgb(var(--c-card))"
             stroke="#0E8A62"
             strokeWidth="2.5"
             className="transition-all duration-[1200ms] ease-out"

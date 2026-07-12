@@ -5,17 +5,73 @@
 @tailwind utilities;
 
 @layer base {
+  /* Design tokens — light theme (unchanged look). "R G B" triplets. */
+  :root {
+    --c-pine: 23 59 51;
+    --c-pinesoft: 42 84 74;
+    --c-paper: 244 247 245;
+    --c-card: 255 255 255;
+    --c-jade: 14 138 98;
+    --c-jade-deep: 10 107 76;
+    --c-jade-tint: 226 242 235;
+    --c-marigold: 237 164 25;
+    --c-marigold-tint: 251 240 216;
+    --c-marigold-ink: 138 91 0;
+    --c-mist: 222 232 227;
+    --c-fog: 108 128 120;
+    --c-danger: 192 69 60;
+    /* Fixed-dark surfaces (footer, toasts, celebration overlays). */
+    --c-abyss: 23 59 51;
+    --c-abyss-soft: 42 84 74;
+    --c-glow: 244 247 245;
+    --ring-track: #dee8e3;
+    --focus-ring: #0e8a62;
+  }
+
+  /* Dark theme — deep-space cosmic. Text/surface roles invert; accents glow. */
+  .dark {
+    --c-pine: 230 242 236;
+    --c-pinesoft: 196 216 207;
+    --c-paper: 8 15 13;
+    --c-card: 15 27 23;
+    --c-jade: 47 192 141;
+    --c-jade-deep: 110 224 178;
+    --c-jade-tint: 15 43 33;
+    --c-marigold: 242 177 62;
+    --c-marigold-tint: 46 34 12;
+    --c-marigold-ink: 244 200 120;
+    --c-mist: 34 51 44;
+    --c-fog: 134 160 149;
+    --c-danger: 226 106 96;
+    --c-abyss: 13 26 22;
+    --c-abyss-soft: 22 41 34;
+    --c-glow: 230 242 236;
+    --ring-track: #22332c;
+    --focus-ring: #2fc08d;
+  }
+
   html {
     scroll-behavior: smooth;
+    /* Never allow accidental horizontal scroll on small screens
+       (clip, not hidden, so no new scroll container is created). */
+    overflow-x: clip;
   }
   body {
     @apply bg-paper font-body text-pine antialiased;
+  }
+  /* Cosmic backdrop in dark mode: faint aurora blooms over near-black. */
+  .dark body {
+    background-image:
+      radial-gradient(52rem 30rem at 85% -8%, rgba(47, 192, 141, 0.09), transparent 65%),
+      radial-gradient(40rem 26rem at -12% 30%, rgba(124, 92, 255, 0.08), transparent 65%),
+      radial-gradient(34rem 24rem at 60% 110%, rgba(242, 177, 62, 0.05), transparent 60%);
+    background-attachment: fixed;
   }
   ::selection {
     @apply bg-jade-tint text-jade-deep;
   }
   :focus-visible {
-    outline: 2px solid #0e8a62;
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -28,11 +84,27 @@
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-jade px-5 py-3 font-medium text-white shadow-card transition-all hover:bg-jade-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
+  /* Dark mode uses a brighter jade — dark text keeps the CTA readable. */
+  .dark .btn-primary {
+    color: rgb(6 24 17);
+  }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-mist bg-card px-5 py-3 font-medium text-pine transition-all hover:border-jade hover:text-jade-deep active:scale-[0.98];
   }
   .eyebrow {
     @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-fog;
+  }
+  /* Landing-page glassmorphism panel (used over the cosmic backdrop). */
+  .glass {
+    @apply rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-md;
+  }
+  /* Deep-space gradient behind the landing page (base under the starfield). */
+  .cosmos-bg {
+    background:
+      radial-gradient(60rem 40rem at 80% -10%, rgba(47, 192, 141, 0.13), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 40%, rgba(124, 92, 255, 0.1), transparent 60%),
+      radial-gradient(40rem 30rem at 60% 110%, rgba(242, 177, 62, 0.07), transparent 55%),
+      #050b09;
   }
 }
 

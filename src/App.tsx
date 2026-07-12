@@ -1,8 +1,10 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
 import { StreakProvider } from "./context/StreakContext";
 import { FeedbackWidget } from "./components/FeedbackWidget";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import {
   ForgotPasswordPage,
@@ -10,15 +12,29 @@ import {
   ResetPasswordPage,
   SignUpPage,
 } from "./pages/AuthPages";
+import { LandingPage } from "./pages/Landing";
 import { OnboardingPage } from "./pages/Onboarding";
 import { DashboardPage } from "./pages/Dashboard";
 import { RoadmapPage } from "./pages/Roadmap";
 import { ExplorePage } from "./pages/Explore";
 import { ProfilePage } from "./pages/Profile";
 
+/** Root: signed-in users get the dashboard, visitors get the landing page. */
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <LandingPage />;
+  return (
+    <ProtectedRoute requireOnboarded>
+      <DashboardPage />
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
         <StreakProvider>
@@ -27,6 +43,7 @@ export default function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/about" element={<LandingPage />} />
 
           <Route
             path="/onboarding"
@@ -36,14 +53,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute requireOnboarded>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<RootRoute />} />
           <Route
             path="/roadmap"
             element={
@@ -74,6 +84,7 @@ export default function App() {
         </StreakProvider>
         </ToastProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

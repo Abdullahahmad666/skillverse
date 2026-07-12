@@ -120,7 +120,7 @@ export function FeedbackWidget() {
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full bg-pine px-4 py-2.5 text-sm font-medium text-paper shadow-lift transition-all hover:bg-pinesoft active:scale-[0.97]"
+        className="flex items-center gap-2 rounded-full bg-abyss px-4 py-2.5 text-sm font-medium text-glow shadow-lift transition-all hover:bg-abyss-soft active:scale-[0.97]"
       >
         <ChatIcon />
         Feedback

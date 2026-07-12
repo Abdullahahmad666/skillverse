@@ -104,7 +104,7 @@ function LeaderRow({
           rank === 1
             ? "bg-marigold text-white shadow-card"
             : rank <= 3
-              ? "bg-pine text-paper"
+              ? "bg-abyss text-glow"
               : "bg-paper text-fog"
         }`}
         aria-label={`Rank ${rank}`}

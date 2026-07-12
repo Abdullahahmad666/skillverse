@@ -1,6 +1,7 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "../context/AuthContext";
+import { ThemeToggle } from "../context/ThemeContext";
 import { LoadingScreen } from "./LoadingScreen";
 import { DISCORD_URL } from "../lib/supabase";
 
@@ -39,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <header className="sticky top-0 z-20 border-b border-mist/70 bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 lg:max-w-4xl">
           <NavLink to="/" className="flex items-center gap-2">
             <Logo />
             <span className="font-display text-lg font-bold tracking-tight">
@@ -67,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {DISCORD_URL && (
               <a
                 href={DISCORD_URL}
@@ -88,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-6">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-6 lg:max-w-4xl">{children}</main>
 
       <Footer />
 
@@ -122,35 +124,41 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-16 bg-pine text-paper">
-      <div className="mx-auto grid max-w-3xl gap-8 px-4 py-10 sm:grid-cols-[1.4fr_1fr_1fr]">
+    // `relative` keeps the footer above fixed z-0 canvases (galaxy view).
+    <footer className="relative mt-16 bg-abyss text-glow">
+      <div className="mx-auto grid max-w-3xl gap-8 px-4 py-10 sm:grid-cols-[1.4fr_1fr_1fr] lg:max-w-4xl">
         <div>
           <div className="flex items-center gap-2">
             <Logo />
             <span className="font-display text-lg font-bold tracking-tight">SkillVerse</span>
           </div>
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-paper/60">
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-glow/60">
             Curated roadmaps, monthly cohorts, and vetted free resources — so
             you always know what to learn next.
           </p>
         </div>
         <nav aria-label="Footer">
-          <div className="eyebrow text-paper/50">Learn</div>
+          <div className="eyebrow text-glow/50">Learn</div>
           <ul className="mt-3 space-y-2 text-sm">
             {tabs.map((t) => (
               <li key={t.to}>
                 <NavLink
                   to={t.to}
-                  className="text-paper/80 transition-colors hover:text-marigold"
+                  className="text-glow/80 transition-colors hover:text-marigold"
                 >
                   {t.label}
                 </NavLink>
               </li>
             ))}
+            <li>
+              <Link to="/about" className="text-glow/80 transition-colors hover:text-marigold">
+                About SkillVerse
+              </Link>
+            </li>
           </ul>
         </nav>
         <div>
-          <div className="eyebrow text-paper/50">Community</div>
+          <div className="eyebrow text-glow/50">Community</div>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
               {DISCORD_URL ? (
@@ -158,13 +166,13 @@ function Footer() {
                   href={DISCORD_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-paper/80 transition-colors hover:text-marigold"
+                  className="inline-flex items-center gap-1.5 text-glow/80 transition-colors hover:text-marigold"
                 >
                   <DiscordIcon />
                   Learners' Discord
                 </a>
               ) : (
-                <span className="text-paper/50">Discord coming soon</span>
+                <span className="text-glow/50">Discord coming soon</span>
               )}
             </li>
             <li>
@@ -172,7 +180,7 @@ function Footer() {
                 href="https://roadmap.sh"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-paper/80 transition-colors hover:text-marigold"
+                className="text-glow/80 transition-colors hover:text-marigold"
               >
                 More inspiration
               </a>
@@ -181,8 +189,8 @@ function Footer() {
         </div>
       </div>
       {/* Extra bottom padding on mobile clears the fixed tab bar. */}
-      <div className="border-t border-paper/10 pb-20 md:pb-0">
-        <div className="mx-auto flex max-w-3xl flex-col items-start justify-between gap-1 px-4 py-4 font-mono text-[11px] text-paper/50 sm:flex-row sm:items-center">
+      <div className="border-t border-glow/10 pb-20 md:pb-0">
+        <div className="mx-auto flex max-w-3xl flex-col items-start justify-between gap-1 px-4 py-4 font-mono text-[11px] text-glow/50 sm:flex-row sm:items-center lg:max-w-4xl">
           <span>© {year} SkillVerse. Free for learners, always.</span>
           <span>Built with cohorts, not checkboxes.</span>
         </div>

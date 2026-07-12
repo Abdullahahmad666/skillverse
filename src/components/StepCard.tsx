@@ -19,7 +19,7 @@ const statusChip: Record<StepStatus, string> = {
 const difficultyChip: Record<StepLevel, string> = {
   beginner: "bg-jade-tint text-jade-deep",
   intermediate: "bg-marigold-tint text-marigold-ink",
-  advanced: "bg-pine text-paper",
+  advanced: "bg-abyss text-glow",
 };
 
 type AiMode = "simplify" | "quiz";
@@ -59,6 +59,9 @@ interface StepCardProps {
   defaultOpen?: boolean;
   /** Pulse the card once when reached via a dashboard deep link. */
   highlighted?: boolean;
+  /** Render just the card (no trail rail / list markup) — used in the
+   *  galaxy view's detail overlay. */
+  bare?: boolean;
   revealDelay?: number;
 }
 
@@ -72,6 +75,7 @@ export function StepCard({
   onStatusChange,
   defaultOpen = false,
   highlighted = false,
+  bare = false,
   revealDelay = 0,
 }: StepCardProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -97,13 +101,15 @@ export function StepCard({
     setAiResult({ mode, text });
   };
 
+  const Root = bare ? "div" : "li";
   return (
-    <li
-      className="reveal relative flex gap-4 sm:gap-5"
-      style={{ animationDelay: `${revealDelay}ms` }}
-      id={`step-${step.id}`}
+    <Root
+      className={bare ? "block" : "reveal relative flex gap-4 sm:gap-5"}
+      style={bare ? undefined : { animationDelay: `${revealDelay}ms` }}
+      id={bare ? undefined : `step-${step.id}`}
     >
       {/* Trail rail + node */}
+      {!bare && (
       <div className="flex w-10 flex-none flex-col items-center sm:w-12">
         <div
           aria-hidden
@@ -132,9 +138,10 @@ export function StepCard({
           />
         )}
       </div>
+      )}
 
       {/* Card */}
-      <div className="mb-4 min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${bare ? "" : "mb-4"}`}>
         <div
           className={`rounded-2xl border bg-card shadow-card transition-shadow ${
             done ? "border-jade/30" : "border-mist"
@@ -310,7 +317,7 @@ export function StepCard({
           </div>
         </div>
       </div>
-    </li>
+    </Root>
   );
 }
 
@@ -351,7 +358,7 @@ export function StatusControl({
     <div
       role="radiogroup"
       aria-label="Step status"
-      className="inline-flex rounded-lg border border-mist bg-paper p-0.5"
+      className="inline-flex max-w-full flex-wrap rounded-lg border border-mist bg-paper p-0.5"
     >
       {options.map((opt) => {
         const active = value === opt;
@@ -362,7 +369,7 @@ export function StatusControl({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(opt)}
-            className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wide transition-all ${
+            className={`rounded-md px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wide transition-all sm:px-3 sm:text-[11px] ${
               active
                 ? opt === "done"
                   ? "pop bg-jade text-white"
@@ -386,6 +393,8 @@ interface MilestoneCardProps {
   /** All prerequisite steps done — the project can be marked complete. */
   unlocked: boolean;
   onComplete: () => Promise<boolean>;
+  /** Render as a plain block (galaxy overlay) instead of a list item. */
+  bare?: boolean;
   revealDelay?: number;
 }
 
@@ -398,6 +407,7 @@ export function MilestoneCard({
   achievedAt,
   unlocked,
   onComplete,
+  bare = false,
   revealDelay = 0,
 }: MilestoneCardProps) {
   const [busy, setBusy] = useState(false);
@@ -418,10 +428,11 @@ export function MilestoneCard({
     toast("Milestone complete");
   };
 
+  const Root = bare ? "div" : "li";
   return (
-    <li
-      className="reveal relative mb-6 mt-1 list-none"
-      style={{ animationDelay: `${revealDelay}ms` }}
+    <Root
+      className={bare ? "relative block" : "reveal relative mb-6 mt-1 list-none"}
+      style={bare ? undefined : { animationDelay: `${revealDelay}ms` }}
     >
       <div
         className={`relative overflow-hidden rounded-3xl border-2 p-5 transition-colors sm:p-6 ${
@@ -493,7 +504,7 @@ export function MilestoneCard({
           </div>
         )}
       </div>
-    </li>
+    </Root>
   );
 }
 

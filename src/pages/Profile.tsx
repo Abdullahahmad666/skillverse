@@ -112,7 +112,7 @@ export function ProfilePage() {
       {/* Progress summary */}
       <section
         aria-label="Progress summary"
-        className="reveal mt-6 grid grid-cols-3 gap-3"
+        className="reveal mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3"
         style={{ animationDelay: "80ms" }}
       >
         <SummaryStat label="Current skill" value={skill?.title ?? "—"} />
