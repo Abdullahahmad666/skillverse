@@ -46,9 +46,9 @@ export function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2">
             <p className="eyebrow">{skill?.title ?? "Your skill"}</p>
             {cohortData.cohort && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-mist bg-card px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide text-fog">
-                <PeopleIcon />
-                {cohortData.cohort.label}
+              <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-mist bg-card px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide text-fog">
+                <span className="flex-none"><PeopleIcon /></span>
+                <span className="truncate">{cohortData.cohort.label}</span>
               </span>
             )}
           </div>
@@ -205,7 +205,7 @@ export function DashboardPage() {
 
       {/* Community */}
       <Reveal ariaLabel="Community" delay={220} className="mt-4">
-        <div className="relative overflow-hidden rounded-3xl bg-pine p-6 text-paper sm:p-7">
+        <div className="relative overflow-hidden rounded-3xl bg-abyss p-6 text-glow sm:p-7">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-jade/25 blur-3xl"
@@ -213,7 +213,7 @@ export function DashboardPage() {
           <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h2 className="font-display text-lg font-bold">Learning is easier together</h2>
-              <p className="mt-1 text-sm text-paper/70">
+              <p className="mt-1 text-sm text-glow/70">
                 Ask questions, share progress, and find study partners from your cohort.
               </p>
             </div>
@@ -227,7 +227,7 @@ export function DashboardPage() {
                 Join the learners' Discord
               </a>
             ) : (
-              <span className="font-mono text-xs text-paper/60">Discord link coming soon</span>
+              <span className="font-mono text-xs text-glow/60">Discord link coming soon</span>
             )}
           </div>
         </div>
@@ -304,7 +304,7 @@ function StreakBadge({
           className="ml-1 border-l border-mist pl-3"
           title="Streak freeze: covers one missed day automatically"
         >
-          <div className="flex items-center gap-1 font-mono text-sm font-semibold text-sky-600">
+          <div className="flex items-center gap-1 font-mono text-sm font-semibold text-sky-600 dark:text-sky-400">
             <SnowflakeIcon />
             {freezes}
           </div>

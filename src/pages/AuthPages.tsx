@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { ThemeToggle } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { GENERIC_ERROR } from "../lib/messages";
 import { logEvent } from "../lib/analytics";
@@ -24,7 +25,10 @@ function AuthLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="reveal w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex items-center gap-2">
@@ -49,6 +53,12 @@ function AuthLayout({
         <div className="rounded-2xl border border-mist bg-card p-6 shadow-card">
           {children}
         </div>
+        <p className="mt-6 text-center text-xs text-fog">
+          New around here?{" "}
+          <Link to="/about" className="font-medium text-jade-deep hover:underline">
+            See what SkillVerse is
+          </Link>
+        </p>
       </div>
     </div>
   );

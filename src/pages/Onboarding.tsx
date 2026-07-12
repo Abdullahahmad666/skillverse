@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { ThemeToggle } from "../context/ThemeContext";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { logEvent } from "../lib/analytics";
 import type { Skill } from "../lib/types";
@@ -64,7 +65,10 @@ export function OnboardingPage() {
   if (loading) return <LoadingScreen label="Setting up" />;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="reveal w-full max-w-md">
         <div className="mb-8 text-center">
           <p className="eyebrow mb-2">Step 1 of 1</p>

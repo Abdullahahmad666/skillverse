@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`toast-in pointer-events-auto flex max-w-sm items-center gap-2.5 rounded-xl px-4 py-3 text-left text-sm font-medium shadow-lift ${
               t.kind === "error"
                 ? "bg-danger text-white"
-                : "bg-pine text-paper"
+                : "bg-abyss text-glow"
             }`}
           >
             <span aria-hidden className="flex-none">

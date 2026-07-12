@@ -1,11 +1,28 @@
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { MilestoneCard, StepCard } from "../components/StepCard";
 import { useRoadmap } from "../hooks/useRoadmap";
 import { logEvent } from "../lib/analytics";
+import type { GalaxyNodeInput } from "../components/GalaxyRoadmap";
 import type { Milestone, RoadmapStep, StepLevel } from "../lib/types";
+
+// The three.js bundle loads only when the galaxy view is opened.
+const GalaxyRoadmap = lazy(() => import("../components/GalaxyRoadmap"));
+
+const VIEW_KEY = "sv-roadmap-view";
+
+/** Galaxy needs WebGL and the user not preferring reduced motion. */
+function detectGalaxyCapable(): boolean {
+  try {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
 
 interface StageGroup {
   key: string;
@@ -40,6 +57,36 @@ export function RoadmapPage() {
     nextStep,
   } = useRoadmap();
   const location = useLocation();
+
+  // Galaxy vs flat view — flat is always the accessible default/fallback.
+  const [galaxyCapable] = useState(detectGalaxyCapable);
+  const [viewPref, setViewPref] = useState<"flat" | "galaxy">(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === "galaxy" ? "galaxy" : "flat";
+    } catch {
+      return "flat";
+    }
+  });
+  const view = galaxyCapable && viewPref === "galaxy" ? "galaxy" : "flat";
+  const setView = (v: "flat" | "galaxy") => {
+    setViewPref(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  // Node selected inside the galaxy → detail overlay.
+  const [selected, setSelected] = useState<GalaxyNodeInput | null>(null);
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected]);
 
   // Funnel: one roadmap_viewed event per visit.
   useEffect(() => {
@@ -103,6 +150,51 @@ export function RoadmapPage() {
       .every((s) => isDone(s.id));
   };
 
+  // Steps + milestones flattened in journey order for the galaxy view.
+  const galaxyNodes = useMemo<GalaxyNodeInput[]>(() => {
+    const out: GalaxyNodeInput[] = [];
+    stageGroups.forEach((g, gi) => {
+      for (const s of g.steps) {
+        out.push({
+          kind: "step",
+          id: s.id,
+          title: s.title,
+          badge: String(s.order_index).padStart(2, "0"),
+          stageIndex: gi,
+          state:
+            progressByStep[s.id]?.status === "done"
+              ? "done"
+              : nextStep?.id === s.id
+                ? "current"
+                : "todo",
+        });
+      }
+      if (g.milestone) {
+        out.push({
+          kind: "milestone",
+          id: g.milestone.id,
+          title: g.milestone.title,
+          badge: "★",
+          stageIndex: gi,
+          state: achievedMilestones[g.milestone.id]
+            ? "achieved"
+            : milestoneUnlocked(g.milestone)
+              ? "unlocked"
+              : "locked",
+        });
+      }
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageGroups, progressByStep, achievedMilestones, nextStep, steps]);
+
+  const selectedStep =
+    selected?.kind === "step" ? steps.find((s) => s.id === selected.id) ?? null : null;
+  const selectedMilestone =
+    selected?.kind === "milestone"
+      ? milestones.find((m) => m.id === selected.id) ?? null
+      : null;
+
   // Smooth-scroll to a step when arriving via /roadmap#step-<id>.
   useEffect(() => {
     if (loading || !location.hash) return;
@@ -120,11 +212,42 @@ export function RoadmapPage() {
 
   return (
     <AppShell>
-      <header className="reveal">
-        <p className="eyebrow">Roadmap</p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
-          {skill?.title ?? "Your roadmap"}
-        </h1>
+      {/* Galaxy mode renders over a dark fixed canvas — scope the dark
+          design tokens to this page so the header/overlay stay readable. */}
+      <div className={view === "galaxy" ? "dark" : ""}>
+      <header className="reveal relative z-10">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="eyebrow">Roadmap</p>
+            <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+              {skill?.title ?? "Your roadmap"}
+            </h1>
+          </div>
+          {galaxyCapable && (
+            <div
+              role="radiogroup"
+              aria-label="Roadmap view"
+              className="inline-flex rounded-lg border border-mist bg-card p-0.5"
+            >
+              {(["flat", "galaxy"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={view === v}
+                  onClick={() => setView(v)}
+                  className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wide transition-all ${
+                    view === v
+                      ? "pop bg-jade-tint text-jade-deep"
+                      : "text-fog hover:text-pine"
+                  }`}
+                >
+                  {v === "flat" ? "List" : "✦ Galaxy"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {skill?.description && (
           <p className="mt-2 max-w-xl leading-relaxed text-fog">{skill.description}</p>
         )}
@@ -154,12 +277,29 @@ export function RoadmapPage() {
       </header>
 
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p role="alert" className="relative z-10 mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
-      {stageGroups.map((group, gi) => {
+      {view === "galaxy" && (
+        <Suspense
+          fallback={
+            <div className="relative z-10">
+              <LoadingScreen label="Charting the galaxy" />
+            </div>
+          }
+        >
+          <GalaxyRoadmap
+            key={galaxyNodes.map((n) => n.id).join("|")}
+            nodes={galaxyNodes}
+            stageTitles={stageGroups.map((g) => g.title)}
+            onSelect={setSelected}
+          />
+        </Suspense>
+      )}
+
+      {view === "flat" && stageGroups.map((group, gi) => {
         const doneInStage = group.steps.filter((s) => isDone(s.id)).length;
         const stagePercent = Math.round((doneInStage / group.steps.length) * 100);
         const headingId = `stage-heading-${group.key}`;
@@ -242,6 +382,60 @@ export function RoadmapPage() {
           </p>
         </div>
       )}
+
+      {/* Galaxy node detail: bottom sheet on mobile, side panel on desktop.
+          Reuses the exact flat-view cards, so status/AI/milestone actions
+          work identically. */}
+      {selected && (selectedStep || selectedMilestone) && (
+        <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={selected.title}>
+          <button
+            type="button"
+            aria-label="Close details"
+            onClick={() => setSelected(null)}
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          />
+          <div className="reveal absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-3xl bg-paper p-4 pb-8 shadow-lift md:inset-y-0 md:left-auto md:right-0 md:h-full md:max-h-none md:w-[480px] md:rounded-none md:rounded-l-3xl md:p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="eyebrow">
+                {selected.kind === "milestone" ? "Milestone" : `Step ${selected.badge}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label="Close details"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-fog transition-colors hover:bg-mist/60 hover:text-pine"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+                  <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            {selectedStep && (
+              <StepCard
+                bare
+                step={selectedStep}
+                index={0}
+                status={progressByStep[selectedStep.id]?.status ?? "not_started"}
+                resources={resourcesByStep[selectedStep.id] ?? []}
+                railFilledAbove={false}
+                isLast
+                onStatusChange={(s) => void setStepStatus(selectedStep.id, s)}
+                defaultOpen
+              />
+            )}
+            {selectedMilestone && (
+              <MilestoneCard
+                bare
+                milestone={selectedMilestone}
+                achievedAt={achievedMilestones[selectedMilestone.id]?.achieved_at ?? null}
+                unlocked={milestoneUnlocked(selectedMilestone)}
+                onComplete={() => completeMilestone(selectedMilestone.id)}
+              />
+            )}
+          </div>
+        </div>
+      )}
+      </div>
     </AppShell>
   );
 }
