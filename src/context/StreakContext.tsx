@@ -105,7 +105,7 @@ export function StreakProvider({ children }: { children: ReactNode }) {
           aria-live="polite"
         >
           <div
-            className={`streak-pop relative flex flex-col items-center gap-1.5 rounded-3xl bg-pine px-8 py-6 text-center text-paper shadow-lift ${
+            className={`streak-pop relative flex flex-col items-center gap-1.5 rounded-3xl bg-abyss px-8 py-6 text-center text-glow shadow-lift ${
               celebration.big ? "ring-2 ring-marigold" : ""
             }`}
           >
@@ -115,11 +115,11 @@ export function StreakProvider({ children }: { children: ReactNode }) {
             </span>
             <div className="font-display text-3xl font-extrabold leading-none">
               {celebration.streak}
-              <span className="ml-1.5 text-base font-bold text-paper/70">
+              <span className="ml-1.5 text-base font-bold text-glow/70">
                 day{celebration.streak === 1 ? "" : "s"}
               </span>
             </div>
-            <p className="max-w-xs text-sm leading-relaxed text-paper/80">
+            <p className="max-w-xs text-sm leading-relaxed text-glow/80">
               {celebration.message}
             </p>
           </div>

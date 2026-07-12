@@ -1,18 +1,28 @@
 /** @type {import('tailwindcss').Config} */
+
+// All colors are CSS variables (defined in index.css) so the entire app
+// re-themes for dark mode without touching component classes. Values are
+// "R G B" triplets to keep Tailwind's alpha modifiers (e.g. bg-pine/70) working.
+const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        pine: "#173B33",
-        pinesoft: "#2A544A",
-        paper: "#F4F7F5",
-        card: "#FFFFFF",
-        jade: { DEFAULT: "#0E8A62", deep: "#0A6B4C", tint: "#E2F2EB" },
-        marigold: { DEFAULT: "#EDA419", tint: "#FBF0D8", ink: "#8A5B00" },
-        mist: "#DEE8E3",
-        fog: "#6C8078",
-        danger: "#C0453C",
+        pine: v("pine"),
+        pinesoft: v("pinesoft"),
+        paper: v("paper"),
+        card: v("card"),
+        jade: { DEFAULT: v("jade"), deep: v("jade-deep"), tint: v("jade-tint") },
+        marigold: { DEFAULT: v("marigold"), tint: v("marigold-tint"), ink: v("marigold-ink") },
+        mist: v("mist"),
+        fog: v("fog"),
+        danger: v("danger"),
+        // Surfaces that stay dark in BOTH themes (footer, toasts, overlays).
+        abyss: { DEFAULT: v("abyss"), soft: v("abyss-soft") },
+        glow: v("glow"),
       },
       fontFamily: {
         display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],

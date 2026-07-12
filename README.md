@@ -161,6 +161,40 @@ pure aggregates (member count, members behind you) so opted-out members are
 counted anonymously but never listed. Opt-out is enforced at the DB layer —
 no client query can return an opted-out user.
 
+## Galaxy roadmap (V3.2)
+
+- The roadmap has two views, toggled in its header (persisted per browser):
+  **List** (the flat, fully accessible default) and **✦ Galaxy** — a
+  scroll-driven 3D journey where steps are planets along a curved path,
+  stages are labeled banners, and milestones are radiant bodies. Completed
+  steps glow jade, the current step pulses gold, future steps stay dim.
+- Scrolling flies the camera along the path (it starts at your current
+  step); clicking a planet or milestone opens a detail panel (bottom sheet
+  on mobile, side panel on desktop) that reuses the flat view's cards — so
+  status changes, AI helpers, and milestone completion all work identically.
+- The three.js scene is lazy-loaded (shared chunk with the landing
+  starfield), and the galaxy option is hidden entirely on devices without
+  WebGL or with `prefers-reduced-motion` — the flat list is always the
+  fallback and the accessible equivalent.
+- The dark-theme toggle appears on every screen: app header (dashboard,
+  roadmap, explore, profile) and the top-right of auth + onboarding pages.
+
+## Landing page & theming (V3.1)
+
+- **Public landing page** at `/` (for signed-out visitors) and `/about`
+  (always): a long-scroll cosmic marketing page — hero, how-it-works, the
+  three roadmap collections, feature grid, FAQ, and repeated sign-up CTAs.
+  Content is static, so no RLS was loosened for anonymous access.
+- **3D starfield** (`three`) renders behind the landing page, drifting with
+  scroll. It is lazy-loaded into its own chunk, gated on WebGL support, and
+  skipped entirely under `prefers-reduced-motion` (a static gradient remains).
+- **Dark theme toggle** (sun/moon in the app header, persisted in
+  `localStorage`, applied pre-paint via an inline script). The palette is
+  CSS-variable design tokens (`tailwind.config.js` + `index.css`), so every
+  existing component themes automatically; light mode is pixel-identical to
+  before. Surfaces that must stay dark in both themes (footer, toasts,
+  celebration overlays) use the fixed `abyss`/`glow` tokens.
+
 ## Feedback & launch analytics (V2.3)
 
 - **Feedback widget** (floating button on every page, works signed out):
