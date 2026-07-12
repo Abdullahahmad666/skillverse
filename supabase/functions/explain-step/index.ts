@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
     const stepId = typeof body.step_id === "string" ? body.step_id : null;
     const regenerate = body.regenerate === true;
     const save = body.save === true;
+    // Learner modes (any signed-in user): a simpler re-explanation, or a
+    // short ungraded quiz. Results are never persisted.
+    const mode =
+      body.mode === "simplify" || body.mode === "quiz" ? body.mode : null;
     if (!stepId || !/^[0-9a-f-]{36}$/i.test(stepId)) {
       return errorResponse("invalid_input", "A valid step_id is required.", 400);
     }
@@ -63,6 +67,57 @@ Deno.serve(async (req) => {
       .single();
     if (stepError || !step) {
       return errorResponse("not_found", "Step not found.", 404);
+    }
+
+    if (mode) {
+      const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!apiKey) {
+        return errorResponse("server_error", "Service temporarily unavailable.", 500);
+      }
+      const modeSkillTitle =
+        (step as { skills?: { title?: string } | { title?: string }[] }).skills instanceof Array
+          ? ((step as { skills: { title?: string }[] }).skills[0]?.title ?? "this skill")
+          : ((step as { skills?: { title?: string } }).skills?.title ?? "this skill");
+      const context =
+        `Skill: ${modeSkillTitle}\nStep: ${step.title}\n` +
+        `Step summary: ${step.description ?? ""}\n` +
+        `Existing explanation: ${step.ai_explanation ?? "(none)"}`;
+      const instruction =
+        mode === "simplify"
+          ? `Re-explain this learning step for a total beginner who found the ` +
+            `existing explanation confusing. Use everyday analogies and short ` +
+            `sentences. 3-4 sentences, plain text only — no headings, no lists, no markdown.`
+          : `Write 2-3 short quiz questions a beginner should be able to answer ` +
+            `after finishing this step. Questions only, no answers. One per line, ` +
+            `numbered like "1." — plain text only, no markdown.`;
+
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 400,
+          messages: [{ role: "user", content: `${instruction}\n\n${context}` }],
+        }),
+      });
+      if (!aiRes.ok) {
+        console.error("AI provider error:", await aiRes.text());
+        return errorResponse("provider_error", "Service temporarily unavailable.", 502);
+      }
+      const aiData = await aiRes.json();
+      const result: string = (aiData.content ?? [])
+        .map((c: { type: string; text?: string }) => (c.type === "text" ? c.text : ""))
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      if (!result) {
+        return errorResponse("provider_error", "Service temporarily unavailable.", 502);
+      }
+      return jsonResponse({ result, mode });
     }
 
     // Normal path: serve the stored, reviewed explanation.

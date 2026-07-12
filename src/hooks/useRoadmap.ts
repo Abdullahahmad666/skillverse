@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useStreak } from "../context/StreakContext";
 import { friendlyError } from "../lib/messages";
 import { logEvent } from "../lib/analytics";
 import type {
@@ -8,6 +9,7 @@ import type {
   Resource,
   RoadmapStep,
   Skill,
+  Stage,
   StepStatus,
   UserMilestone,
   UserProgress,
@@ -16,6 +18,7 @@ import type {
 export interface RoadmapData {
   skill: Skill | null;
   steps: RoadmapStep[];
+  stages: Stage[];
   resourcesByStep: Record<string, Resource[]>;
   milestones: Milestone[];
   progressByStep: Record<string, UserProgress>;
@@ -23,6 +26,8 @@ export interface RoadmapData {
   loading: boolean;
   error: string | null;
   setStepStatus: (stepId: string, status: StepStatus) => Promise<void>;
+  /** Marks a milestone's project done (DB verifies it's unlocked). */
+  completeMilestone: (milestoneId: string) => Promise<boolean>;
   doneCount: number;
   totalCount: number;
   progressPercent: number;
@@ -32,10 +37,12 @@ export interface RoadmapData {
 
 export function useRoadmap(): RoadmapData {
   const { user, profile } = useAuth();
+  const { checkAfterAction } = useStreak();
   const skillId = profile?.current_skill_id ?? null;
 
   const [skill, setSkill] = useState<Skill | null>(null);
   const [steps, setSteps] = useState<RoadmapStep[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [progress, setProgress] = useState<UserProgress[]>([]);
@@ -54,11 +61,16 @@ export function useRoadmap(): RoadmapData {
 
     (async () => {
       try {
-        const [skillRes, stepsRes, milestonesRes, progressRes, achievedRes] =
+        const [skillRes, stepsRes, stagesRes, milestonesRes, progressRes, achievedRes] =
           await Promise.all([
             supabase.from("skills").select("*").eq("id", skillId).single(),
             supabase
               .from("roadmap_steps")
+              .select("*")
+              .eq("skill_id", skillId)
+              .order("order_index"),
+            supabase
+              .from("stages")
               .select("*")
               .eq("skill_id", skillId)
               .order("order_index"),
@@ -75,6 +87,8 @@ export function useRoadmap(): RoadmapData {
           skillRes.error ?? stepsRes.error ?? milestonesRes.error ??
           progressRes.error ?? achievedRes.error;
         if (firstError) throw firstError;
+        // Stages are additive (migration 0006) — tolerate their absence.
+        if (stagesRes.error) console.error(stagesRes.error);
 
         const stepList = (stepsRes.data ?? []) as RoadmapStep[];
         const stepIds = stepList.map((s) => s.id);
@@ -86,6 +100,7 @@ export function useRoadmap(): RoadmapData {
         if (!active) return;
         setSkill(skillRes.data as Skill);
         setSteps(stepList);
+        setStages((stagesRes.data ?? []) as Stage[]);
         setMilestones((milestonesRes.data ?? []) as Milestone[]);
         setProgress((progressRes.data ?? []) as UserProgress[]);
         setAchieved((achievedRes.data ?? []) as UserMilestone[]);
@@ -123,9 +138,9 @@ export function useRoadmap(): RoadmapData {
   }, [resources]);
 
   /**
-   * Recompute milestone achievement from a given progress snapshot.
-   * A milestone is achieved when every step up to (and including) its
-   * anchor step is done. Un-achieves if a step is unchecked.
+   * Milestones are completed by the user marking the project done (see
+   * completeMilestone) — but they are still REVOKED automatically here if a
+   * prerequisite step is unchecked, so the leaderboard can't hold stale wins.
    */
   const syncMilestones = useCallback(
     async (nextProgress: UserProgress[]) => {
@@ -136,7 +151,7 @@ export function useRoadmap(): RoadmapData {
       const orderById: Record<string, number> = {};
       for (const s of steps) orderById[s.id] = s.order_index;
 
-      const shouldBeAchieved = (m: Milestone) => {
+      const stillUnlocked = (m: Milestone) => {
         const anchorOrder = orderById[m.after_step_id];
         if (anchorOrder === undefined) return false;
         return steps
@@ -144,34 +159,9 @@ export function useRoadmap(): RoadmapData {
           .every((s) => doneIds.has(s.id));
       };
 
-      const toInsert = milestones.filter(
-        (m) => shouldBeAchieved(m) && !achievedMilestones[m.id],
-      );
       const toRemove = milestones.filter(
-        (m) => !shouldBeAchieved(m) && achievedMilestones[m.id],
+        (m) => !stillUnlocked(m) && achievedMilestones[m.id],
       );
-
-      if (toInsert.length) {
-        const rows = toInsert.map((m) => ({
-          user_id: user.id,
-          milestone_id: m.id,
-        }));
-        const { data } = await supabase
-          .from("user_milestones")
-          .upsert(rows, { onConflict: "user_id,milestone_id" })
-          .select();
-        if (data) {
-          setAchieved((prev) => {
-            const existing = new Set(prev.map((a) => a.milestone_id));
-            return [
-              ...prev,
-              ...(data as UserMilestone[]).filter(
-                (d) => !existing.has(d.milestone_id),
-              ),
-            ];
-          });
-        }
-      }
       if (toRemove.length) {
         const ids = toRemove.map((m) => m.id);
         await supabase
@@ -183,6 +173,34 @@ export function useRoadmap(): RoadmapData {
       }
     },
     [user, steps, milestones, achievedMilestones],
+  );
+
+  /**
+   * Mark a milestone's project as done. The insert policy re-verifies in the
+   * database that every prerequisite step is completed (milestone_unlocked),
+   * so this can't be spoofed from the console.
+   */
+  const completeMilestone = useCallback(
+    async (milestoneId: string): Promise<boolean> => {
+      if (!user) return false;
+      const { data, error: insertError } = await supabase
+        .from("user_milestones")
+        .insert({ user_id: user.id, milestone_id: milestoneId })
+        .select()
+        .single();
+      if (insertError) {
+        console.error(insertError);
+        return false;
+      }
+      setAchieved((prev) => [
+        ...prev.filter((a) => a.milestone_id !== milestoneId),
+        data as UserMilestone,
+      ]);
+      logEvent("milestone_completed", { milestone_id: milestoneId });
+      void checkAfterAction();
+      return true;
+    },
+    [user, checkAfterAction],
   );
 
   const setStepStatus = useCallback(
@@ -223,7 +241,10 @@ export function useRoadmap(): RoadmapData {
         return;
       }
       setError(null);
-      if (status === "done") logEvent("step_completed", { step_id: stepId });
+      if (status === "done") {
+        logEvent("step_completed", { step_id: stepId });
+        void checkAfterAction();
+      }
       const confirmed = [
         ...progress.filter((p) => p.step_id !== stepId),
         data as UserProgress,
@@ -231,7 +252,7 @@ export function useRoadmap(): RoadmapData {
       setProgress(confirmed);
       await syncMilestones(confirmed);
     },
-    [user, progress, progressByStep, syncMilestones],
+    [user, progress, progressByStep, syncMilestones, checkAfterAction],
   );
 
   const doneCount = useMemo(
@@ -257,6 +278,7 @@ export function useRoadmap(): RoadmapData {
   return {
     skill,
     steps,
+    stages,
     resourcesByStep,
     milestones,
     progressByStep,
@@ -264,6 +286,7 @@ export function useRoadmap(): RoadmapData {
     loading,
     error,
     setStepStatus,
+    completeMilestone,
     doneCount,
     totalCount,
     progressPercent,

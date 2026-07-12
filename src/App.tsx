@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
+import { StreakProvider } from "./context/StreakContext";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import {
@@ -20,6 +21,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+        <StreakProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
@@ -69,6 +71,7 @@ export default function App() {
         </Routes>
         {/* Floating on every page, signed in or not. */}
         <FeedbackWidget />
+        </StreakProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

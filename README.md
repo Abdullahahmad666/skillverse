@@ -24,7 +24,10 @@ A curated, step-by-step roadmap app for beginners. One skill (Web Development) w
    skills: Python Programming and UX Design), then
    `supabase/migrations/0005_feedback_analytics.sql` (feedback, skill
    requests, and funnel events — RLS-locked tables written only through
-   rate-limited security-definer RPCs; reads are admin/service-role only).
+   rate-limited security-definer RPCs; reads are admin/service-role only),
+   and finally `supabase/migrations/0006_stages_and_streaks.sql` (stages +
+   step subtopics/checkpoints + milestone project briefs; streak freezes,
+   timezone-aware streak trigger with grace, DB-verified milestone unlock).
 4. In **Authentication → Providers**, make sure Email is enabled. In
    **Authentication → URL Configuration**, add your site URL(s) — including
    `http://localhost:5173` for local dev — so password-reset redirect links work.
@@ -121,12 +124,26 @@ index), creates one if none is open, closes open cohorts from previous months
 membership. Clients can never write `cohorts` directly. The dashboard calls
 the same idempotent RPC on load, which also migrates pre-V2 accounts.
 
-**Streaks.** A streak is consecutive UTC days with at least one step completed.
-A `SECURITY DEFINER` trigger on `user_progress` bumps `user_stats`
-(`current_streak`, `longest_streak`, `last_active_date`) whenever a row
-transitions into `done`: same day → unchanged, yesterday → +1, otherwise reset
-to 1. Un-checking a step never shrinks a streak. The client renders a lapsed
-streak (last activity before yesterday) as 0.
+**Streaks (V3 semantics).** A day counts when the user completes at least one
+step (`user_progress` → done) or completes a milestone project
+(`user_milestones` insert). A `SECURITY DEFINER` trigger on both tables bumps
+`user_stats`: same day → unchanged, yesterday → +1, exactly one missed day
+with a streak freeze available → the freeze is consumed and the streak
+continues (freezes refill to 1 weekly), otherwise reset to 1. **Timezone:**
+the client reports its IANA timezone once per session via the
+`set_user_timezone` RPC (validated in SQL); the trigger computes "today" as
+`(now() AT TIME ZONE user_stats.timezone)::date`, defaulting to UTC, so
+streaks roll over at the user's local midnight. Un-checking a step never
+shrinks a streak, and reset messaging is deliberately kind (see
+`src/lib/streaks.ts`). Streak counters are trigger-only — no client write
+path — so they can't be forged.
+
+**Milestones (V3 semantics).** A milestone is a stage-ending project the user
+marks complete themselves. The `user_milestones` insert policy calls
+`milestone_unlocked()` in the database, so a milestone row can only be
+created once every prerequisite step is done — the leaderboard metric can't
+be spoofed from the console. Unchecking a prerequisite step still revokes
+the milestone automatically.
 
 **Milestones passed.** Derived live, never cached: a count of
 `user_milestones` rows joined to the cohort skill's `milestones`. (V1 rule: a

@@ -64,6 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
+  // Report the browser's IANA timezone once per session so the streak
+  // trigger can compute the user's local calendar day (defaults to UTC).
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || sessionStorage.getItem("sv-tz-synced") === uid) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz) return;
+    void supabase.rpc("set_user_timezone", { p_tz: tz }).then(({ error }) => {
+      if (error) console.error(error);
+      else sessionStorage.setItem("sv-tz-synced", uid);
+    });
+  }, [session]);
+
   const refreshProfile = useCallback(async () => {
     if (session?.user) await loadProfile(session.user.id);
   }, [session, loadProfile]);

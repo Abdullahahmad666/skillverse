@@ -5,7 +5,8 @@ export type FunnelEvent =
   | "skill_started"
   | "step_completed"
   | "roadmap_viewed"
-  | "feedback_submitted";
+  | "feedback_submitted"
+  | "milestone_completed";
 
 /**
  * Fire-and-forget funnel logging via the `log_event` SECURITY DEFINER RPC

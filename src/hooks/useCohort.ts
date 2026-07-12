@@ -21,16 +21,17 @@ export interface CohortData {
   refresh: () => Promise<void>;
 }
 
-/** Days between a YYYY-MM-DD date and today, in UTC. */
-function daysSinceUtc(isoDate: string): number {
-  const then = Date.parse(`${isoDate}T00:00:00Z`);
+/**
+ * Days between a YYYY-MM-DD date and today in the browser's local calendar —
+ * matching the streak trigger, which stores last_active_date in the user's
+ * reported timezone (set via set_user_timezone on sign-in).
+ */
+function daysSinceLocal(isoDate: string): number {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const then = new Date(y, (m ?? 1) - 1, d ?? 1).getTime();
   const now = new Date();
-  const todayUtc = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  );
-  return Math.round((todayUtc - then) / 86_400_000);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((today - then) / 86_400_000);
 }
 
 /**
@@ -104,8 +105,14 @@ export function useCohort(): CohortData {
 
   const effectiveStreak = useMemo(() => {
     if (!stats?.last_active_date) return 0;
-    // Streak survives until a full day is skipped (yesterday still counts).
-    return daysSinceUtc(stats.last_active_date) <= 1 ? stats.current_streak : 0;
+    const gap = daysSinceLocal(stats.last_active_date);
+    // Alive if active today/yesterday — or one missed day that an available
+    // streak freeze would cover on the next qualifying action.
+    if (gap <= 1) return stats.current_streak;
+    if (gap === 2 && (stats.streak_freezes_available ?? 0) > 0) {
+      return stats.current_streak;
+    }
+    return 0;
   }, [stats]);
 
   return {

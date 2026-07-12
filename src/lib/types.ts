@@ -26,6 +26,10 @@ export interface RoadmapStep {
   order_index: number;
   /** Optional until migration 0004 is applied; treat missing as "beginner". */
   level?: StepLevel;
+  /** Stage grouping + in-depth content — optional until migration 0006. */
+  stage_id?: string | null;
+  subtopics?: string[] | null;
+  checkpoint?: string | null;
   title: string;
   description: string | null;
   ai_explanation: string | null;
@@ -48,7 +52,16 @@ export interface Milestone {
   order_index: number;
   title: string;
   description: string | null;
+  /** The project to build — optional until migration 0006. */
+  project_brief?: string | null;
   after_step_id: string;
+}
+
+export interface Stage {
+  id: string;
+  skill_id: string;
+  order_index: number;
+  title: string;
 }
 
 export interface UserProgress {
@@ -82,6 +95,10 @@ export interface UserStats {
   current_streak: number;
   longest_streak: number;
   last_active_date: string | null;
+  /** Grace + timezone fields — optional until migration 0006. */
+  streak_freezes_available?: number;
+  freezes_refilled_at?: string;
+  timezone?: string;
   updated_at: string;
 }
 
