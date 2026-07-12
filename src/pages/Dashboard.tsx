@@ -59,6 +59,7 @@ export function DashboardPage() {
         <StreakBadge
           streak={cohortData.effectiveStreak}
           longest={cohortData.stats?.longest_streak ?? 0}
+          freezes={cohortData.stats?.streak_freezes_available ?? 0}
         />
       </div>
 
@@ -263,7 +264,15 @@ function hoursRemainingLabel(steps: Steps, progress: ProgressMap) {
 /* Pieces                                                              */
 /* ------------------------------------------------------------------ */
 
-function StreakBadge({ streak, longest }: { streak: number; longest: number }) {
+function StreakBadge({
+  streak,
+  longest,
+  freezes,
+}: {
+  streak: number;
+  longest: number;
+  freezes: number;
+}) {
   const active = streak > 0;
   return (
     <div className="reveal flex flex-none items-center gap-3 self-start rounded-2xl border border-mist bg-card px-4 py-3 shadow-card sm:self-auto">
@@ -290,7 +299,27 @@ function StreakBadge({ streak, longest }: { streak: number; longest: number }) {
           <div className="eyebrow mt-0.5">best</div>
         </div>
       )}
+      {freezes > 0 && (
+        <div
+          className="ml-1 border-l border-mist pl-3"
+          title="Streak freeze: covers one missed day automatically"
+        >
+          <div className="flex items-center gap-1 font-mono text-sm font-semibold text-sky-600">
+            <SnowflakeIcon />
+            {freezes}
+          </div>
+          <div className="eyebrow mt-0.5">freeze</div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SnowflakeIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M12 2v20M4 6l16 12M20 6 4 18M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5" strokeLinecap="round" />
+    </svg>
   );
 }
 

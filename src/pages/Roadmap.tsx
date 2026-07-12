@@ -2,40 +2,30 @@ import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { LoadingScreen } from "../components/LoadingScreen";
-import { MilestoneMarker, StepCard } from "../components/StepCard";
+import { MilestoneCard, StepCard } from "../components/StepCard";
 import { useRoadmap } from "../hooks/useRoadmap";
 import { logEvent } from "../lib/analytics";
 import type { Milestone, RoadmapStep, StepLevel } from "../lib/types";
 
-type TrailItem =
-  | { kind: "step"; step: RoadmapStep; stepIndex: number }
-  | { kind: "milestone"; milestone: Milestone; anchorStepId: string }
-  | { kind: "level"; level: StepLevel; stepCount: number; hours: number };
+interface StageGroup {
+  key: string;
+  title: string;
+  steps: RoadmapStep[];
+  milestone: Milestone | null;
+}
 
-const LEVEL_STYLES: Record<StepLevel, { label: string; chip: string; dot: string }> = {
-  beginner: {
-    label: "Beginner",
-    chip: "bg-jade-tint text-jade-deep",
-    dot: "bg-jade",
-  },
-  intermediate: {
-    label: "Intermediate",
-    chip: "bg-marigold-tint text-marigold-ink",
-    dot: "bg-marigold",
-  },
-  advanced: {
-    label: "Advanced",
-    chip: "bg-pine text-paper",
-    dot: "bg-paper",
-  },
+// Fallback stage titles when migration 0006 (stages) hasn't been applied yet.
+const LEVEL_FALLBACK_TITLES: Record<StepLevel, string> = {
+  beginner: "Foundations",
+  intermediate: "Building up",
+  advanced: "Going deep",
 };
-
-const levelOf = (s: RoadmapStep): StepLevel => s.level ?? "beginner";
 
 export function RoadmapPage() {
   const {
     skill,
     steps,
+    stages,
     milestones,
     resourcesByStep,
     progressByStep,
@@ -43,6 +33,7 @@ export function RoadmapPage() {
     loading,
     error,
     setStepStatus,
+    completeMilestone,
     doneCount,
     totalCount,
     progressPercent,
@@ -50,42 +41,67 @@ export function RoadmapPage() {
   } = useRoadmap();
   const location = useLocation();
 
+  // Funnel: one roadmap_viewed event per visit.
+  useEffect(() => {
+    logEvent("roadmap_viewed");
+  }, []);
+
   // Step targeted by a dashboard deep link (/roadmap#step-<id>).
   const targetStepId = location.hash.startsWith("#step-")
     ? location.hash.slice("#step-".length)
     : null;
 
-  // Interleave milestones into the step list at their anchored positions,
-  // with a level divider wherever the difficulty tier changes.
-  const trail = useMemo<TrailItem[]>(() => {
-    const items: TrailItem[] = [];
-    steps.forEach((step, i) => {
-      const level = levelOf(step);
-      if (i === 0 || levelOf(steps[i - 1]) !== level) {
-        const group = steps.filter((s) => levelOf(s) === level);
-        items.push({
-          kind: "level",
-          level,
-          stepCount: group.length,
-          hours: Math.ceil(
-            group.reduce((sum, s) => sum + (s.estimated_hours ?? 0), 0),
-          ),
+  const isDone = (stepId: string) =>
+    progressByStep[stepId]?.status === "done";
+
+  // Group steps into stages; each stage ends with its milestone (anchored to
+  // one of the stage's steps). Falls back to difficulty tiers pre-0006.
+  const stageGroups = useMemo<StageGroup[]>(() => {
+    const groups: StageGroup[] = [];
+    if (stages.length > 0) {
+      for (const st of stages) {
+        groups.push({
+          key: st.id,
+          title: st.title,
+          steps: steps.filter((s) => s.stage_id === st.id),
+          milestone: null,
         });
       }
-      items.push({ kind: "step", step, stepIndex: i });
-      milestones
-        .filter((m) => m.after_step_id === step.id)
-        .forEach((m) =>
-          items.push({ kind: "milestone", milestone: m, anchorStepId: step.id }),
-        );
-    });
-    return items;
-  }, [steps, milestones]);
+      const orphans = steps.filter(
+        (s) => !stages.some((st) => st.id === s.stage_id),
+      );
+      if (orphans.length) {
+        groups.push({ key: "extra", title: "More steps", steps: orphans, milestone: null });
+      }
+    } else {
+      for (const level of ["beginner", "intermediate", "advanced"] as StepLevel[]) {
+        const levelSteps = steps.filter((s) => (s.level ?? "beginner") === level);
+        if (levelSteps.length) {
+          groups.push({
+            key: level,
+            title: LEVEL_FALLBACK_TITLES[level],
+            steps: levelSteps,
+            milestone: null,
+          });
+        }
+      }
+    }
+    for (const g of groups) {
+      g.milestone =
+        milestones.find((m) => g.steps.some((s) => s.id === m.after_step_id)) ?? null;
+    }
+    return groups.filter((g) => g.steps.length > 0);
+  }, [stages, steps, milestones]);
 
-  // Funnel: one roadmap_viewed event per visit.
-  useEffect(() => {
-    logEvent("roadmap_viewed");
-  }, []);
+  // A milestone unlocks once every step up to its anchor is done (the DB
+  // insert policy re-verifies this server-side).
+  const milestoneUnlocked = (m: Milestone) => {
+    const anchor = steps.find((s) => s.id === m.after_step_id);
+    if (!anchor) return false;
+    return steps
+      .filter((s) => s.order_index <= anchor.order_index)
+      .every((s) => isDone(s.id));
+  };
 
   // Smooth-scroll to a step when arriving via /roadmap#step-<id>.
   useEffect(() => {
@@ -102,8 +118,6 @@ export function RoadmapPage() {
 
   if (loading) return <AppShell><LoadingScreen label="Loading your roadmap" /></AppShell>;
 
-  const isDone = (stepId: string) => progressByStep[stepId]?.status === "done";
-
   return (
     <AppShell>
       <header className="reveal">
@@ -115,7 +129,7 @@ export function RoadmapPage() {
           <p className="mt-2 max-w-xl leading-relaxed text-fog">{skill.description}</p>
         )}
 
-        {/* Slim progress bar */}
+        {/* Overall progress */}
         <div className="mt-5">
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className="font-mono text-xs font-medium text-jade-deep">
@@ -145,68 +159,82 @@ export function RoadmapPage() {
         </p>
       )}
 
-      <ol className="mt-8 list-none" aria-label="Roadmap steps">
-        {trail.map((item, i) => {
-          const delay = Math.min(i * 40, 400);
-          if (item.kind === "level") {
-            const s = LEVEL_STYLES[item.level];
-            return (
-              <li
-                key={`level-${item.level}`}
-                className="reveal mb-5 flex items-center gap-3 pt-2"
-                style={{ animationDelay: `${delay}ms` }}
+      {stageGroups.map((group, gi) => {
+        const doneInStage = group.steps.filter((s) => isDone(s.id)).length;
+        const stagePercent = Math.round((doneInStage / group.steps.length) * 100);
+        const headingId = `stage-heading-${group.key}`;
+        return (
+          <section key={group.key} aria-labelledby={headingId} className="mt-10">
+            <header className="reveal" style={{ animationDelay: `${gi * 60}ms` }}>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Stage {gi + 1}</p>
+                  <h2 id={headingId} className="mt-0.5 font-display text-xl font-extrabold tracking-tight">
+                    {group.title}
+                  </h2>
+                </div>
+                <span className="font-mono text-xs text-fog">
+                  {doneInStage} / {group.steps.length} steps
+                </span>
+              </div>
+              <div
+                className="mt-3 h-1 overflow-hidden rounded-full bg-mist"
+                role="progressbar"
+                aria-valuenow={stagePercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${group.title} progress`}
               >
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] ${s.chip}`}
-                >
-                  <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-                  {s.label}
-                </span>
-                <span className="font-mono text-[11px] text-fog">
-                  {item.stepCount} steps · ~{item.hours}h
-                </span>
-                <span aria-hidden className="h-px flex-1 bg-mist" />
-              </li>
-            );
-          }
-          if (item.kind === "step") {
-            const status = progressByStep[item.step.id]?.status ?? "not_started";
-            const prevStep = steps[item.stepIndex - 1];
-            return (
-              <StepCard
-                key={item.step.id}
-                step={item.step}
-                index={item.stepIndex}
-                status={status}
-                resources={resourcesByStep[item.step.id] ?? []}
-                railFilledAbove={prevStep ? isDone(prevStep.id) : false}
-                isLast={i === trail.length - 1}
-                onStatusChange={(s) => void setStepStatus(item.step.id, s)}
-                defaultOpen={
-                  targetStepId
-                    ? targetStepId === item.step.id
-                    : nextStep?.id === item.step.id
-                }
-                highlighted={targetStepId === item.step.id}
-                revealDelay={delay}
-              />
-            );
-          }
-          const achieved = achievedMilestones[item.milestone.id] ?? null;
-          return (
-            <MilestoneMarker
-              key={item.milestone.id}
-              title={item.milestone.title}
-              description={item.milestone.description}
-              achievedAt={achieved?.achieved_at ?? null}
-              railFilled={isDone(item.anchorStepId)}
-              revealDelay={delay}
-            />
-          );
-        })}
-      </ol>
+                <div
+                  className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+                    stagePercent === 100 ? "bg-marigold" : "bg-jade"
+                  }`}
+                  style={{ width: `${stagePercent}%` }}
+                />
+              </div>
+            </header>
 
-      {trail.length === 0 && !error && (
+            <ol className="mt-5 list-none">
+              {group.steps.map((step, i) => {
+                const status = progressByStep[step.id]?.status ?? "not_started";
+                const prevStep = group.steps[i - 1];
+                return (
+                  <StepCard
+                    key={step.id}
+                    step={step}
+                    index={i}
+                    status={status}
+                    resources={resourcesByStep[step.id] ?? []}
+                    railFilledAbove={prevStep ? isDone(prevStep.id) : false}
+                    isLast={i === group.steps.length - 1}
+                    onStatusChange={(s) => void setStepStatus(step.id, s)}
+                    defaultOpen={
+                      targetStepId
+                        ? targetStepId === step.id
+                        : nextStep?.id === step.id
+                    }
+                    highlighted={targetStepId === step.id}
+                    revealDelay={Math.min(i * 40, 320)}
+                  />
+                );
+              })}
+              {group.milestone && (
+                <MilestoneCard
+                  milestone={group.milestone}
+                  achievedAt={
+                    achievedMilestones[group.milestone.id]?.achieved_at ?? null
+                  }
+                  unlocked={milestoneUnlocked(group.milestone)}
+                  onComplete={() => completeMilestone(group.milestone!.id)}
+                  revealDelay={Math.min(group.steps.length * 40, 360)}
+                />
+              )}
+            </ol>
+          </section>
+        );
+      })}
+
+      {stageGroups.length === 0 && !error && (
         <div className="mt-10 rounded-2xl border border-dashed border-mist bg-card p-8 text-center">
           <p className="font-display text-lg font-bold">No steps yet</p>
           <p className="mt-1 text-sm text-fog">
