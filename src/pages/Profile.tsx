@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useRoadmap } from "../hooks/useRoadmap";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../context/ToastContext";
-import { friendlyError } from "../lib/messages";
+import { friendlyError, USERNAME_TAKEN } from "../lib/messages";
 import {
   cleanText,
   validateAvatarUrl,
@@ -79,7 +79,7 @@ export function ProfilePage() {
     if (updateError) {
       setError(
         updateError.code === "23505"
-          ? "That username is taken. Try another."
+          ? USERNAME_TAKEN
           : friendlyError(updateError, "Couldn't save your profile. Please try again."),
       );
       return;

@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { ThemeToggle } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
-import { GENERIC_ERROR } from "../lib/messages";
+import { GENERIC_ERROR, signupError, USERNAME_TAKEN } from "../lib/messages";
 import { logEvent } from "../lib/analytics";
 import {
   cleanText,
@@ -198,6 +198,15 @@ export function SignUpPage() {
     if (err) return setError(err);
 
     setBusy(true);
+    const { data: usernameAvailable, error: usernameCheckError } = await supabase.rpc(
+      "username_is_available",
+      { p_username: uname },
+    );
+    if (!usernameCheckError && usernameAvailable === false) {
+      setBusy(false);
+      return setError(USERNAME_TAKEN);
+    }
+
     const { data, error: authError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -206,8 +215,7 @@ export function SignUpPage() {
     setBusy(false);
 
     if (authError) {
-      console.error(authError);
-      setError("We couldn't create your account. Please check your details and try again.");
+      setError(signupError(authError));
       return;
     }
 
