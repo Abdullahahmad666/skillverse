@@ -22,6 +22,8 @@ export function FeedbackWidget() {
   const { toast } = useToast();
   const panelRef = useRef<HTMLFormElement | null>(null);
 
+  if (["/login", "/signup"].includes(location.pathname)) return null;
+
   const close = () => {
     setOpen(false);
     setRating(0);
