@@ -174,20 +174,20 @@ export function LandingPage() {
       <main>
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-4 pb-20 pt-16 text-center sm:pt-24">
-          <p className="reveal eyebrow !text-jade">Guided · social · free forever</p>
-          <h1 className="reveal mx-auto mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-6xl">
+          <p className="eyebrow !text-jade">Guided · social · free forever</p>
+          <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-6xl">
             Learn any skill, with people learning{" "}
             <span className="bg-gradient-to-r from-jade to-marigold bg-clip-text text-transparent">
               beside you
             </span>
             .
           </h1>
-          <p className="reveal mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg" style={{ animationDelay: "120ms" }}>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
             Stop drowning in tutorials. One curated path per skill, real
             projects at every milestone, a streak that forgives, and a cohort
             that started exactly when you did.
           </p>
-          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "200ms" }}>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to={primaryCta} className="btn-primary !px-7 !py-3.5 text-base">
               {primaryCtaLabel}
               <span aria-hidden>→</span>
@@ -196,7 +196,7 @@ export function LandingPage() {
               Browse the roadmaps
             </a>
           </div>
-          <p className="reveal mt-4 font-mono text-xs text-white/60" style={{ animationDelay: "260ms" }}>
+          <p className="mt-4 font-mono text-xs text-white/60">
             No credit card · no ads · your progress stays yours
           </p>
 
