@@ -5,13 +5,54 @@
 // simply returns the stored text. Only an admin (ADMIN_USER_IDS secret) can
 // force a fresh AI generation, review it, and persist it with save=true.
 //
-// Secrets used (set via `supabase secrets set`): ANTHROPIC_API_KEY, ADMIN_USER_IDS.
+// Secrets used (set via `supabase secrets set`): GEMINI_API_KEY, ADMIN_USER_IDS.
 // SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 // The AI key never leaves this function.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, clientIp, isAdmin } from "../_shared/rateLimit.ts";
+
+// Model used for all generations. Swap for another Gemini model if needed
+// (e.g. "gemini-2.5-flash"); "gemini-2.0-flash" is fast and on the free tier.
+const GEMINI_MODEL = "gemini-2.0-flash";
+
+/**
+ * Calls Gemini's generateContent endpoint and returns the plain-text output.
+ * On an HTTP error it returns { ok: false, detail } so the caller can log the
+ * detail server-side and reply with a safe generic message.
+ */
+async function callGemini(
+  apiKey: string,
+  prompt: string,
+  maxOutputTokens: number,
+): Promise<{ ok: true; text: string } | { ok: false; detail: string }> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens },
+      }),
+    },
+  );
+  if (!res.ok) {
+    return { ok: false, detail: await res.text() };
+  }
+  const data = await res.json();
+  const text: string = (data.candidates ?? [])
+    .flatMap((c: { content?: { parts?: { text?: string }[] } }) => c.content?.parts ?? [])
+    .map((p: { text?: string }) => p.text ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+  return { ok: true, text };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -70,7 +111,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode) {
-      const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+      const apiKey = Deno.env.get("GEMINI_API_KEY");
       if (!apiKey) {
         return errorResponse("server_error", "Service temporarily unavailable.", 500);
       }
@@ -87,33 +128,16 @@ Deno.serve(async (req) => {
           ? `Re-explain this learning step for a total beginner who found the ` +
             `existing explanation confusing. Use everyday analogies and short ` +
             `sentences. 3-4 sentences, plain text only — no headings, no lists, no markdown.`
-          : `Write 2-3 short quiz questions a beginner should be able to answer ` +
+          : `Write 3-5 short quiz questions a beginner should be able to answer ` +
             `after finishing this step. Questions only, no answers. One per line, ` +
             `numbered like "1." — plain text only, no markdown.`;
 
-      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 400,
-          messages: [{ role: "user", content: `${instruction}\n\n${context}` }],
-        }),
-      });
-      if (!aiRes.ok) {
-        console.error("AI provider error:", await aiRes.text());
+      const gen = await callGemini(apiKey, `${instruction}\n\n${context}`, 400);
+      if (!gen.ok) {
+        console.error("AI provider error:", gen.detail);
         return errorResponse("provider_error", "Service temporarily unavailable.", 502);
       }
-      const aiData = await aiRes.json();
-      const result: string = (aiData.content ?? [])
-        .map((c: { type: string; text?: string }) => (c.type === "text" ? c.text : ""))
-        .filter(Boolean)
-        .join("\n")
-        .trim();
+      const result = gen.text;
       if (!result) {
         return errorResponse("provider_error", "Service temporarily unavailable.", 502);
       }
@@ -137,7 +161,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
       return errorResponse("server_error", "Service temporarily unavailable.", 500);
     }
@@ -147,42 +171,19 @@ Deno.serve(async (req) => {
         ? ((step as { skills: { title?: string }[] }).skills[0]?.title ?? "this skill")
         : ((step as { skills?: { title?: string } }).skills?.title ?? "this skill");
 
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 500,
-        messages: [
-          {
-            role: "user",
-            content:
-              `You write short explanations for a beginner learning roadmap.\n` +
-              `Skill: ${skillTitle}\nStep: ${step.title}\nStep summary: ${step.description ?? ""}\n\n` +
-              `Write 3-5 encouraging, plain-language sentences explaining what this step is, ` +
-              `why it matters in the journey, and one practical tip for learning it. ` +
-              `No headings, no lists, no markdown — one paragraph of plain text only.`,
-          },
-        ],
-      }),
-    });
+    const prompt =
+      `You write short explanations for a beginner learning roadmap.\n` +
+      `Skill: ${skillTitle}\nStep: ${step.title}\nStep summary: ${step.description ?? ""}\n\n` +
+      `Write 3-5 encouraging, plain-language sentences explaining what this step is, ` +
+      `why it matters in the journey, and one practical tip for learning it. ` +
+      `No headings, no lists, no markdown — one paragraph of plain text only.`;
 
-    if (!aiRes.ok) {
-      const detail = await aiRes.text();
-      console.error("AI provider error:", detail);
+    const gen = await callGemini(apiKey, prompt, 500);
+    if (!gen.ok) {
+      console.error("AI provider error:", gen.detail);
       return errorResponse("provider_error", "Service temporarily unavailable.", 502);
     }
-
-    const aiData = await aiRes.json();
-    const explanation: string = (aiData.content ?? [])
-      .map((c: { type: string; text?: string }) => (c.type === "text" ? c.text : ""))
-      .filter(Boolean)
-      .join("\n")
-      .trim();
+    const explanation = gen.text;
 
     if (!explanation) {
       return errorResponse("provider_error", "Service temporarily unavailable.", 502);
