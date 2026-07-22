@@ -25,7 +25,11 @@ function initialTheme(): Theme {
   } catch {
     /* storage unavailable */
   }
-  return "light";
+  // Default to dark so the app matches the dark landing page — moving from the
+  // landing into login/signup no longer flips the UI to light. An explicit
+  // user choice (saved above) always wins. Kept in sync with the pre-paint
+  // script in index.html.
+  return "dark";
 }
 
 /**

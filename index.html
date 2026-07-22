@@ -47,12 +47,16 @@
       content="Curated roadmaps, real projects, streaks, and monthly cohorts. Free forever."
     />
     <script>
-      // Apply the saved theme before first paint to avoid a flash.
+      // Apply the theme before first paint to avoid a flash. Dark is the
+      // default (matches the dark landing page); only an explicit "light"
+      // choice opts out. Must stay in sync with initialTheme() in ThemeContext.
       try {
-        if (localStorage.getItem("sv-theme") === "dark") {
+        if (localStorage.getItem("sv-theme") !== "light") {
           document.documentElement.classList.add("dark");
         }
-      } catch (e) {}
+      } catch (e) {
+        document.documentElement.classList.add("dark");
+      }
     </script>
   </head>
   <body>
