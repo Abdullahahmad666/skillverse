@@ -104,14 +104,26 @@ export function LandingPage() {
 
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let webglOk = false;
     try {
       const canvas = document.createElement("canvas");
-      if (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) {
-        setShowStars(true);
-      }
+      webglOk = Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
     } catch {
       /* no WebGL — static gradient fallback */
     }
+    if (!webglOk) return;
+
+    // Defer the 3D starfield until the browser is idle so the ~135KB three.js
+    // chunk and WebGL init stay off the initial-render / LCP critical path.
+    // The static cosmos gradient is already visible in the meantime.
+    const win = window as typeof window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const schedule = win.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1200));
+    const cancel = win.cancelIdleCallback ?? window.clearTimeout;
+    const id = schedule(() => setShowStars(true));
+    return () => cancel(id);
   }, []);
 
   const primaryCta = user ? "/" : "/signup";
@@ -132,7 +144,7 @@ export function LandingPage() {
       )}
 
       {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#050b09]/70 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#050b09]/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link to="/about" className="flex items-center gap-2">
             <LogoMark />
@@ -364,7 +376,7 @@ export function LandingPage() {
       </main>
 
       {/* Landing footer */}
-      <footer className="border-t border-white/10">
+      <footer className="border-t border-white/10 bg-[#050b09]">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-3 px-4 py-8 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <LogoMark />
