@@ -104,26 +104,14 @@ export function LandingPage() {
 
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let webglOk = false;
     try {
       const canvas = document.createElement("canvas");
-      webglOk = Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+      if (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) {
+        setShowStars(true);
+      }
     } catch {
       /* no WebGL — static gradient fallback */
     }
-    if (!webglOk) return;
-
-    // Defer the 3D starfield until the browser is idle so the ~135KB three.js
-    // chunk and WebGL init stay off the initial-render / LCP critical path.
-    // The static cosmos gradient is already visible in the meantime.
-    const win = window as typeof window & {
-      requestIdleCallback?: (cb: () => void) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    const schedule = win.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1200));
-    const cancel = win.cancelIdleCallback ?? window.clearTimeout;
-    const id = schedule(() => setShowStars(true));
-    return () => cancel(id);
   }, []);
 
   const primaryCta = user ? "/" : "/signup";
@@ -144,7 +132,7 @@ export function LandingPage() {
       )}
 
       {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#050b09]/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#050b09]/70 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link to="/about" className="flex items-center gap-2">
             <LogoMark />
@@ -174,20 +162,20 @@ export function LandingPage() {
       <main>
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-4 pb-20 pt-16 text-center sm:pt-24">
-          <p className="eyebrow !text-jade">Guided · social · free forever</p>
-          <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-6xl">
+          <p className="reveal eyebrow !text-jade">Guided · social · free forever</p>
+          <h1 className="reveal mx-auto mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-6xl">
             Learn any skill, with people learning{" "}
             <span className="bg-gradient-to-r from-jade to-marigold bg-clip-text text-transparent">
               beside you
             </span>
             .
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
+          <p className="reveal mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg" style={{ animationDelay: "120ms" }}>
             Stop drowning in tutorials. One curated path per skill, real
             projects at every milestone, a streak that forgives, and a cohort
             that started exactly when you did.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="reveal mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "200ms" }}>
             <Link to={primaryCta} className="btn-primary !px-7 !py-3.5 text-base">
               {primaryCtaLabel}
               <span aria-hidden>→</span>
@@ -196,7 +184,7 @@ export function LandingPage() {
               Browse the roadmaps
             </a>
           </div>
-          <p className="mt-4 font-mono text-xs text-white/60">
+          <p className="reveal mt-4 font-mono text-xs text-white/60" style={{ animationDelay: "260ms" }}>
             No credit card · no ads · your progress stays yours
           </p>
 
@@ -376,7 +364,7 @@ export function LandingPage() {
       </main>
 
       {/* Landing footer */}
-      <footer className="border-t border-white/10 bg-[#050b09]">
+      <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-3 px-4 py-8 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <LogoMark />

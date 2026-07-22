@@ -4,25 +4,6 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Fonts: preconnect so the handshake happens early, then load the
-         stylesheet non-render-blocking (media=print flips to all on load).
-         Combined with display=swap, text paints immediately in a fallback. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      />
-    </noscript>
-
     <title>SkillVerse — learn any skill, with people learning beside you</title>
     <meta
       name="description"
@@ -60,78 +41,7 @@
     </script>
   </head>
   <body>
-    <!--
-      Critical hero shell — the above-the-fold landing hero, prerendered as
-      static HTML so it paints at ~TTFB instead of waiting for the ~400KB JS
-      bundle to download + mount React. It uses the SAME Tailwind classes as
-      the React hero in src/pages/Landing.tsx, so the render-blocking CSS
-      styles it identically (no layout shift). React (createRoot) replaces
-      this content on mount, so keep this markup in sync with the hero in
-      Landing.tsx if that hero changes.
-    -->
-    <div id="root">
-      <div class="dark relative min-h-screen text-pine">
-        <div aria-hidden class="cosmos-bg fixed inset-0 -z-10"></div>
-        <header class="sticky top-0 z-20 border-b border-white/10 bg-[#050b09]/90 backdrop-blur">
-          <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-            <a class="flex items-center gap-2" href="/about">
-              <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden>
-                <rect width="32" height="32" rx="8" fill="#173B33" />
-                <path d="M10 22V10h4.5a4 4 0 0 1 0 8H12" stroke="#EDA419" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                <circle cx="21" cy="21" r="3" fill="#0E8A62" />
-              </svg>
-              <span class="font-display text-lg font-bold tracking-tight text-white">SkillVerse</span>
-            </a>
-            <div class="flex items-center gap-2">
-              <a class="rounded-lg px-3 py-1.5 text-sm font-medium text-white/80 transition-colors hover:text-white" href="/login">Sign in</a>
-              <a class="btn-primary !px-4 !py-2 text-sm" href="/signup">Start free</a>
-            </div>
-          </div>
-        </header>
-        <main>
-          <section class="mx-auto max-w-5xl px-4 pb-20 pt-16 text-center sm:pt-24">
-            <p class="eyebrow !text-jade">Guided · social · free forever</p>
-            <h1 class="mx-auto mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-6xl">
-              Learn any skill, with people learning
-              <span class="bg-gradient-to-r from-jade to-marigold bg-clip-text text-transparent">beside you</span>.
-            </h1>
-            <p class="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-              Stop drowning in tutorials. One curated path per skill, real projects at every milestone, a streak that forgives, and a cohort that started exactly when you did.
-            </p>
-            <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <a href="/signup" class="btn-primary !px-7 !py-3.5 text-base">Start free <span aria-hidden>→</span></a>
-              <a href="#collections" class="rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 font-medium text-white backdrop-blur transition-all hover:border-jade/60 hover:text-jade">Browse the roadmaps</a>
-            </div>
-            <p class="mt-4 font-mono text-xs text-white/60">No credit card · no ads · your progress stays yours</p>
-          </section>
-        </main>
-      </div>
-    </div>
-    <script>
-      // The critical hero shell above is only correct for a logged-out visitor
-      // on the landing route. On any other route (or if a Supabase session
-      // exists in localStorage, i.e. the user is signed in and will be routed
-      // to the dashboard), clear it synchronously — before first paint — so the
-      // wrong content never flashes. React then renders normally into #root.
-      (function () {
-        try {
-          var p = location.pathname;
-          var onLanding = p === "/" || p === "/about";
-          var loggedIn = false;
-          for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") !== -1) {
-              loggedIn = true;
-              break;
-            }
-          }
-          if (!onLanding || loggedIn) {
-            var r = document.getElementById("root");
-            if (r) r.innerHTML = "";
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
