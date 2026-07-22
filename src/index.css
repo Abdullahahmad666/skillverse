@@ -18,7 +18,9 @@
     --c-marigold-tint: 251 240 216;
     --c-marigold-ink: 138 91 0;
     --c-mist: 222 232 227;
-    --c-fog: 108 128 120;
+    /* Darkened from 108 128 120 (#6C8078, ~4.2:1 on white) to clear WCAG AA
+       4.5:1 for the small/secondary text this token is used for everywhere. */
+    --c-fog: 88 106 98;
     --c-danger: 192 69 60;
     /* Fixed-dark surfaces (footer, toasts, celebration overlays). */
     --c-abyss: 23 59 51;

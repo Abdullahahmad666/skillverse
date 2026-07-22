@@ -184,7 +184,7 @@ export function LandingPage() {
               Browse the roadmaps
             </a>
           </div>
-          <p className="reveal mt-4 font-mono text-xs text-white/40" style={{ animationDelay: "260ms" }}>
+          <p className="reveal mt-4 font-mono text-xs text-white/60" style={{ animationDelay: "260ms" }}>
             No credit card · no ads · your progress stays yours
           </p>
 
@@ -245,7 +245,7 @@ export function LandingPage() {
                 className={i === 2 ? "sm:col-span-2 lg:col-span-1" : ""}
               >
                 <article className="glass group flex h-full flex-col p-6 transition-transform duration-300 hover:-translate-y-1">
-                  <div className="eyebrow !text-white/40">{c.category}</div>
+                  <div className="eyebrow !text-white/60">{c.category}</div>
                   <h3 className="mt-1.5 font-display text-2xl font-bold text-white">{c.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-white/65">{c.blurb}</p>
                   <ol className="mt-5 space-y-2.5">
@@ -258,7 +258,7 @@ export function LandingPage() {
                       </li>
                     ))}
                   </ol>
-                  <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] text-white/50">
+                  <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] text-white/70">
                     <span className="rounded-full border border-white/10 px-2.5 py-1">{c.steps} steps</span>
                     <span className="rounded-full border border-white/10 px-2.5 py-1">~{c.hours}h</span>
                     <span className="rounded-full border border-white/10 px-2.5 py-1">{c.projects} projects</span>
@@ -276,7 +276,7 @@ export function LandingPage() {
             ))}
           </div>
           <Reveal delay={200} className="mt-6 text-center">
-            <p className="text-sm text-white/50">
+            <p className="text-sm text-white/70">
               Don't see your skill?{" "}
               <Link to={user ? "/explore" : "/signup"} className="font-medium text-jade hover:underline">
                 Request it
@@ -380,7 +380,7 @@ export function LandingPage() {
               </a>
             )}
           </nav>
-          <p className="font-mono text-[11px] text-white/40">
+          <p className="font-mono text-[11px] text-white/60">
             © {new Date().getFullYear()} SkillVerse · free for learners, always
           </p>
         </div>
@@ -395,7 +395,7 @@ function Stat({ value, label }: { value: string; label: string }) {
       <dt className="sr-only">{label}</dt>
       <dd>
         <span className="font-display text-3xl font-extrabold text-white">{value}</span>
-        <span className="mt-1 block font-mono text-[11px] uppercase tracking-wide text-white/50">
+        <span className="mt-1 block font-mono text-[11px] uppercase tracking-wide text-white/70">
           {label}
         </span>
       </dd>

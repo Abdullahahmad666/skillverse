@@ -65,7 +65,7 @@ export function FeedbackWidget() {
               type="button"
               onClick={close}
               aria-label="Close feedback form"
-              className="rounded-md p-1 text-fog transition-colors hover:text-pine"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-fog transition-colors hover:text-pine"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
                 <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
