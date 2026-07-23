@@ -42,7 +42,7 @@ async function callGemini(
     },
   );
   if (!res.ok) {
-    return { ok: false, detail: await res.text() };
+    return { ok: false, detail: `HTTP ${res.status}: ${await res.text()}` };
   }
   const data = await res.json();
   const text: string = (data.candidates ?? [])
@@ -51,6 +51,15 @@ async function callGemini(
     .filter(Boolean)
     .join("\n")
     .trim();
+  // A 200 with no text means the model produced nothing usable — usually a
+  // token cutoff (finishReason MAX_TOKENS) or a safety block. Surface the raw
+  // response so the reason is visible in the logs instead of a silent 502.
+  if (!text) {
+    return {
+      ok: false,
+      detail: `empty text from Gemini (HTTP ${res.status}): ${JSON.stringify(data)}`,
+    };
+  }
   return { ok: true, text };
 }
 
@@ -111,7 +120,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode) {
-      const apiKey = Deno.env.get("GEMINI_API_KEY");
+      const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
       if (!apiKey) {
         return errorResponse("server_error", "Service temporarily unavailable.", 500);
       }
@@ -161,7 +170,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
     if (!apiKey) {
       return errorResponse("server_error", "Service temporarily unavailable.", 500);
     }
