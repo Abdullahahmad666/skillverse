@@ -99,9 +99,78 @@ const FAQS = [
   },
 ];
 
+// Plays once per full page load (a hard reload re-initialises this module and
+// replays it); stays false across in-app navigations so the splash doesn't
+// flash every time the landing mounts.
+let splashPlayed = false;
+
+/**
+ * Branded cosmic splash shown while the landing settles on first load / reload.
+ * The brand rises from the bottom, holds briefly, then the whole panel slides
+ * up to reveal the page — so there's no bare flash before content renders.
+ */
+function LandingSplash() {
+  const [active, setActive] = useState(!splashPlayed);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    if (!active) return;
+    splashPlayed = true;
+    const hold = window.setTimeout(() => setLeaving(true), 1100);
+    const done = window.setTimeout(() => setActive(false), 1100 + 750);
+    return () => {
+      window.clearTimeout(hold);
+      window.clearTimeout(done);
+    };
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div
+      aria-hidden
+      className={`cosmos-bg fixed inset-0 z-50 flex items-center justify-center transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.76,0,0.24,1)] ${
+        leaving ? "-translate-y-full opacity-0" : ""
+      }`}
+    >
+      <div className="splash-rise flex flex-col items-center gap-5 text-center">
+        <svg width="64" height="64" viewBox="0 0 32 32" className="drop-shadow-[0_0_28px_rgba(47,192,141,0.4)]" aria-hidden>
+          <rect width="32" height="32" rx="8" fill="#173B33" />
+          <path
+            d="M19.5 12C19.5 9.8 12 9.8 12 13.2C12 16.4 20 15.6 20 19C20 22.6 12 22.6 12 20"
+            stroke="#EDA419"
+            strokeWidth="2.4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <circle cx="22.5" cy="9.5" r="1.7" fill="#0E8A62" />
+        </svg>
+        <div>
+          <div className="font-display text-4xl font-extrabold tracking-tight text-white">
+            SkillVerse
+          </div>
+          <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-jade">
+            guided · social · free
+          </div>
+        </div>
+        <span className="mt-1 block h-1 w-20 overflow-hidden rounded-full bg-white/10">
+          <span className="splash-loader block h-full w-1/3 rounded-full bg-jade" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function LandingPage() {
   const { user } = useAuth();
   const [showStars, setShowStars] = useState(false);
+
+  // The dark boot canvas (index.html's `landing-boot`) has served its purpose
+  // once this page's own cosmic backdrop is mounted; clear it so themed pages
+  // reached via SPA navigation keep their own background.
+  useEffect(() => {
+    document.documentElement.classList.remove("landing-boot");
+  }, []);
 
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -122,6 +191,9 @@ export function LandingPage() {
     // The landing is intrinsically cosmic-dark: the `dark` class scopes the
     // dark design tokens here regardless of the in-app theme toggle.
     <div className="dark relative min-h-screen text-pine">
+      {/* Branded splash while the landing settles (first load / reload). */}
+      <LandingSplash />
+
       {/* Backdrop: gradient always; 3D starfield when the device allows. */}
       <div aria-hidden className="cosmos-bg fixed inset-0 -z-10" />
       {showStars && (

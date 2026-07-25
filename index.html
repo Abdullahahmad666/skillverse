@@ -35,6 +35,23 @@
         if (localStorage.getItem("sv-theme") !== "light") {
           document.documentElement.classList.add("dark");
         }
+        // The landing (and /about) is always cosmic-dark regardless of theme.
+        // Detect it before paint — "/" is the landing only when logged out
+        // (no Supabase auth token in storage) — and mark it so the boot styles
+        // paint a dark <html> canvas, killing the occasional white flash that
+        // slips in before the <body> background rule applies.
+        var loggedIn = false;
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.slice(0, 3) === "sb-" && k.indexOf("-auth-token") !== -1) {
+            loggedIn = true;
+            break;
+          }
+        }
+        var path = location.pathname;
+        if (path === "/about" || (path === "/" && !loggedIn)) {
+          document.documentElement.classList.add("landing-boot");
+        }
       } catch (e) {
         document.documentElement.classList.add("dark");
       }
@@ -47,6 +64,12 @@
     <style>
       body { margin: 0; background-color: #f4f7f5; }
       html.dark body { background-color: #080f0d; }
+      /* Landing is always cosmic-dark. Paint the dark bg on <html> (the canvas,
+         rendered on the very first frame — the most reliable way to kill the
+         intermittent white flash) and keep <body> transparent so it never
+         covers the -z-10 starfield. Cleared once React mounts (Landing.tsx). */
+      html.landing-boot { background-color: #050b09; }
+      html.landing-boot body { background-color: transparent; }
       #root { min-height: 100vh; }
     </style>
   </head>
