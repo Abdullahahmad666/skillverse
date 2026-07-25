@@ -354,35 +354,49 @@ export function StatusControl({
   onChange: (s: StepStatus) => void;
 }) {
   const options: StepStatus[] = ["not_started", "in_progress", "done"];
+  // Encourage the intended flow: you can't jump straight to Done — a step must
+  // be In progress (or already Done) first.
+  const doneLocked = value === "not_started";
   return (
-    <div
-      role="radiogroup"
-      aria-label="Step status"
-      className="inline-flex max-w-full flex-wrap rounded-lg border border-mist bg-paper p-0.5"
-    >
-      {options.map((opt) => {
-        const active = value === opt;
-        return (
-          <button
-            key={opt}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(opt)}
-            className={`rounded-md px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wide transition-all sm:px-3 sm:text-[11px] ${
-              active
-                ? opt === "done"
-                  ? "pop bg-jade text-white"
-                  : opt === "in_progress"
-                    ? "pop bg-marigold-tint text-marigold-ink"
-                    : "pop bg-card text-pine shadow-card"
-                : "text-fog hover:text-pine"
-            }`}
-          >
-            {statusLabels[opt]}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <div
+        role="radiogroup"
+        aria-label="Step status"
+        className="inline-flex max-w-full flex-wrap rounded-lg border border-mist bg-paper p-0.5"
+      >
+        {options.map((opt) => {
+          const active = value === opt;
+          const locked = opt === "done" && doneLocked;
+          return (
+            <button
+              key={opt}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-disabled={locked}
+              disabled={locked}
+              title={locked ? "Mark this step “In progress” first" : undefined}
+              onClick={() => !locked && onChange(opt)}
+              className={`rounded-md px-2 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wide transition-all sm:px-3 sm:text-[11px] ${
+                active
+                  ? opt === "done"
+                    ? "pop bg-jade text-white"
+                    : opt === "in_progress"
+                      ? "pop bg-marigold-tint text-marigold-ink"
+                      : "pop bg-card text-pine shadow-card"
+                  : locked
+                    ? "cursor-not-allowed text-fog/40"
+                    : "text-fog hover:text-pine"
+              }`}
+            >
+              {statusLabels[opt]}
+            </button>
+          );
+        })}
+      </div>
+      {doneLocked && (
+        <span className="font-mono text-[10px] text-fog">Start the step to unlock “Done”</span>
+      )}
     </div>
   );
 }
