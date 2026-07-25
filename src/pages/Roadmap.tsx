@@ -211,9 +211,10 @@ export function RoadmapPage() {
   if (loading) return <AppShell><LoadingScreen label="Loading your roadmap" /></AppShell>;
 
   return (
-    <AppShell>
-      {/* Galaxy mode renders over a dark fixed canvas — scope the dark
-          design tokens to this page so the header/overlay stay readable. */}
+    <AppShell dark={view === "galaxy"}>
+      {/* Galaxy mode renders over a dark fixed canvas. AppShell's `dark` prop
+          scopes the dark tokens to the whole shell (incl. the navbar); this
+          inner wrapper is kept as a harmless no-op for the flat view. */}
       <div className={view === "galaxy" ? "dark" : ""}>
       <header className="reveal relative z-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
