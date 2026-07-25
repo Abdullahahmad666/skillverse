@@ -254,6 +254,19 @@ export function Testimonials() {
             <button type="submit" disabled={!canSubmit} className="btn-primary mt-4 w-full !py-3">
               {busy ? "Posting…" : "Post to the wall"}
             </button>
+            {!busy && (
+              <p className="mt-2 text-center text-xs text-white/50">
+                {canSubmit
+                  ? "You can post up to 5 reviews per hour."
+                  : `Add ${[
+                      cleanName.length < 2 && "your name",
+                      rating < 1 && "a rating",
+                      cleanMessage.length < 4 && "a short review",
+                    ]
+                      .filter(Boolean)
+                      .join(", ")} to post.`}
+              </p>
+            )}
           </form>
         </Reveal>
       </div>
