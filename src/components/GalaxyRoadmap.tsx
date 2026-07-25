@@ -491,7 +491,9 @@ export default function GalaxyRoadmap({ nodes, stageTitles, onSelect }: Props) {
           </span>
         </div>
       </div>
-      <p className="pointer-events-none fixed bottom-24 right-4 z-10 hidden rounded-full border border-white/10 bg-black/45 px-4 py-2 font-mono text-[10px] uppercase tracking-wide text-white/60 backdrop-blur md:bottom-8 md:block">
+      {/* Centered at the bottom so it never sits under the global Feedback
+          button, which is pinned bottom-right on every page. */}
+      <p className="pointer-events-none fixed bottom-24 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-white/10 bg-black/45 px-4 py-2 font-mono text-[10px] uppercase tracking-wide text-white/60 backdrop-blur md:bottom-8 md:block">
         Scroll to travel · click a planet to open it
       </p>
     </div>
