@@ -413,13 +413,13 @@ function LogoMark(): ReactNode {
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden>
       <rect width="32" height="32" rx="8" fill="#173B33" />
       <path
-        d="M10 22V10h4.5a4 4 0 0 1 0 8H12"
+        d="M19.5 12C19.5 9.8 12 9.8 12 13.2C12 16.4 20 15.6 20 19C20 22.6 12 22.6 12 20"
         stroke="#EDA419"
         strokeWidth="2.5"
         fill="none"
         strokeLinecap="round"
       />
-      <circle cx="21" cy="21" r="3" fill="#0E8A62" />
+      <circle cx="22.5" cy="9.5" r="1.7" fill="#0E8A62" />
     </svg>
   );
 }
