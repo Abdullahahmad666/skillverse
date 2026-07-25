@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Reveal } from "../components/Reveal";
+import { Testimonials } from "../components/Testimonials";
 import { useAuth } from "../context/AuthContext";
 import { DISCORD_URL } from "../lib/supabase";
 
@@ -144,6 +145,7 @@ export function LandingPage() {
             <a href="#how" className="transition-colors hover:text-white">How it works</a>
             <a href="#collections" className="transition-colors hover:text-white">Roadmaps</a>
             <a href="#features" className="transition-colors hover:text-white">Why SkillVerse</a>
+            <a href="#wall" className="transition-colors hover:text-white">Reviews</a>
             <a href="#faq" className="transition-colors hover:text-white">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -306,6 +308,9 @@ export function LandingPage() {
             ))}
           </div>
         </section>
+
+        {/* Wall of love — testimonials marquee + add-your-own */}
+        <Testimonials />
 
         {/* FAQ */}
         <section id="faq" aria-labelledby="faq-title" className="mx-auto max-w-3xl scroll-mt-20 px-4 py-16">

@@ -1,5 +1,14 @@
 export type StepStatus = "not_started" | "in_progress" | "done";
 
+/** A public testimonial shown on the landing "Wall of love". */
+export interface Review {
+  id: string;
+  display_name: string;
+  rating: number;
+  message: string;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   username: string | null;

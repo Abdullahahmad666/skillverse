@@ -225,6 +225,30 @@
       transform: scale(1);
     }
   }
+  /* Testimonial wall: two rows drift in opposite directions. Content is
+     duplicated in the markup, so translating one full set (-50%) loops
+     seamlessly. Hover pauses via group-hover on the track; edges fade out. */
+  .marquee {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  }
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee var(--marquee-dur, 48s) linear infinite;
+  }
+  .marquee-reverse {
+    animation-direction: reverse;
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
   /* One-shot ring pulse on the step targeted by a dashboard deep link. */
   .deeplink-pulse {
     animation: deeplink 2.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;
@@ -260,6 +284,15 @@
   .spark {
     animation: none;
     opacity: 0;
+  }
+  /* No auto-scroll: freeze the tracks and let users swipe/scroll to read. */
+  .marquee {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .marquee-track {
+    animation: none;
   }
   *,
   *::before,
