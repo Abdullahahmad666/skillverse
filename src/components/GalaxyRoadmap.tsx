@@ -389,7 +389,14 @@ export default function GalaxyRoadmap({ nodes, stageTitles, onSelect }: Props) {
       camera.position.copy(p).sub(tangent.clone().multiplyScalar(15)).add(
         up.clone().multiplyScalar(5.5),
       );
-      camera.lookAt(curve.getPointAt(Math.min(camT + 0.035, 1)));
+      // On tall/narrow (portrait / mobile) screens, aim higher so the planets
+      // and their stage banners sit lower in the frame — clear of the page
+      // header above, which would otherwise merge into the first planet.
+      const aspect = host.clientWidth / host.clientHeight;
+      const lookLift = aspect >= 1 ? 0 : aspect < 0.6 ? 5 : 3.5;
+      camera.lookAt(
+        curve.getPointAt(Math.min(camT + 0.035, 1)).add(up.clone().multiplyScalar(lookLift)),
+      );
       camLight.position.copy(camera.position);
 
       // Idle motion + pulses.
