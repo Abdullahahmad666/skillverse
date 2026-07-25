@@ -12,7 +12,7 @@ const tabs = [
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
@@ -29,7 +29,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // `dark` scopes the dark design tokens to the whole shell (used by the
+    // galaxy roadmap view) so the navbar matches the cosmic canvas instead of
+    // staying light over a dark background.
+    <div className={`flex min-h-screen flex-col ${dark ? "dark text-pine" : ""}`}>
       {signingOut && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-paper/95 backdrop-blur-sm"

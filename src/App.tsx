@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
+import { ConfirmProvider } from "./context/ConfirmContext";
 import { StreakProvider } from "./context/StreakContext";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -53,6 +54,7 @@ export default function App() {
       <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
+        <ConfirmProvider>
         <StreakProvider>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
@@ -109,6 +111,7 @@ export default function App() {
         {/* Floating on every page, signed in or not. */}
         <FeedbackWidget />
         </StreakProvider>
+        </ConfirmProvider>
         </ToastProvider>
       </AuthProvider>
       </ThemeProvider>
