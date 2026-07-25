@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { AvatarUpload } from "../components/AvatarUpload";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
 import { useRoadmap } from "../hooks/useRoadmap";
@@ -44,7 +45,7 @@ export function ProfilePage() {
     }
   }, [profile]);
 
-  if (!profile || loading) {
+  if (!user || !profile || loading) {
     return <AppShell><LoadingScreen /></AppShell>;
   }
 
@@ -173,8 +174,18 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label htmlFor="p-avatar" className="eyebrow mb-1.5 block">
-              Avatar URL <span className="normal-case tracking-normal">(optional)</span>
+            <span className="eyebrow mb-1.5 block">Profile photo</span>
+            <AvatarUpload
+              userId={user.id}
+              name={displayName || username || "?"}
+              url={avatarUrl || null}
+              onChange={(u) => {
+                setAvatarUrl(u);
+                setSaved(false);
+              }}
+            />
+            <label htmlFor="p-avatar" className="eyebrow mb-1.5 mt-4 block">
+              Or paste an image URL <span className="normal-case tracking-normal">(optional)</span>
             </label>
             <input
               id="p-avatar"
@@ -185,6 +196,9 @@ export function ProfilePage() {
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://…"
             />
+            <p className="mt-1 text-xs text-fog">
+              Upload or snap a selfie above, then <strong>Save changes</strong> to apply it.
+            </p>
           </div>
           <div className="flex items-start justify-between gap-4 rounded-xl border border-mist bg-paper p-4">
             <div>
