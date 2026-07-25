@@ -273,10 +273,16 @@ export function StepCard({
                   <div
                     role="region"
                     aria-label={aiResult.mode === "quiz" ? "Quiz questions" : "Simpler explanation"}
-                    className="mt-3 rounded-xl border border-mist bg-paper p-4"
+                    className={`mt-3 rounded-xl p-4 ${
+                      aiResult.mode === "quiz" ? "bg-marigold-tint/70" : "bg-jade-tint/60"
+                    }`}
                   >
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="eyebrow">
+                      <span
+                        className={`eyebrow ${
+                          aiResult.mode === "quiz" ? "text-marigold-ink" : "text-jade-deep"
+                        }`}
+                      >
                         {aiResult.mode === "quiz" ? "Quick quiz — test yourself" : "In other words"}
                       </span>
                       <button
@@ -288,24 +294,29 @@ export function StepCard({
                         Dismiss
                       </button>
                     </div>
-                    {aiResult.mode === "quiz" ? (
-                      <ol className="space-y-2">
-                        {aiResult.text
-                          .split("\n")
-                          .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
-                          .filter(Boolean)
-                          .map((q, i) => (
-                            <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-pinesoft">
-                              <span className="font-mono text-xs font-semibold text-jade-deep">
-                                {i + 1}.
-                              </span>
-                              {q}
-                            </li>
-                          ))}
-                      </ol>
-                    ) : (
-                      <p className="text-sm leading-relaxed text-pinesoft">{aiResult.text}</p>
-                    )}
+                    {/* Long answers scroll inside the card instead of stretching it. */}
+                    <div className="max-h-72 overflow-y-auto pr-1">
+                      {aiResult.mode === "quiz" ? (
+                        <ol className="space-y-2">
+                          {aiResult.text
+                            .split("\n")
+                            .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
+                            .filter(Boolean)
+                            .map((q, i) => (
+                              <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-pinesoft">
+                                <span className="font-mono text-xs font-semibold text-marigold-ink">
+                                  {i + 1}.
+                                </span>
+                                {q}
+                              </li>
+                            ))}
+                        </ol>
+                      ) : (
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-pinesoft">
+                          {aiResult.text}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

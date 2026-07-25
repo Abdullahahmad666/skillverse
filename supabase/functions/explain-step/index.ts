@@ -42,14 +42,21 @@ async function callLLM(
       model: OPENROUTER_MODEL,
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
+      // Some free models are reasoning models; exclude the chain-of-thought so
+      // only the final answer comes back in `content`.
+      reasoning: { exclude: true },
     }),
   });
   if (!res.ok) {
     return { ok: false, detail: `HTTP ${res.status}: ${await res.text()}` };
   }
   const data = await res.json();
-  const text: string =
-    (data?.choices?.[0]?.message?.content ?? "").toString().trim();
+  // Defense-in-depth: if a reasoning model still leaks <think>…</think> into
+  // the content, drop it and keep only the answer.
+  const text: string = (data?.choices?.[0]?.message?.content ?? "")
+    .toString()
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .trim();
   // A 200 with no text usually means a token cutoff or a provider-side error
   // (e.g. a free model temporarily unavailable). Surface the raw response so
   // the reason is visible in the logs instead of a silent 502.
@@ -140,7 +147,7 @@ Deno.serve(async (req) => {
             `after finishing this step. Questions only, no answers. One per line, ` +
             `numbered like "1." — plain text only, no markdown.`;
 
-      const gen = await callLLM(apiKey, `${instruction}\n\n${context}`, 400);
+      const gen = await callLLM(apiKey, `${instruction}\n\n${context}`, 700);
       if (!gen.ok) {
         console.error("AI provider error:", gen.detail);
         return errorResponse("provider_error", "Service temporarily unavailable.", 502);
@@ -186,7 +193,7 @@ Deno.serve(async (req) => {
       `why it matters in the journey, and one practical tip for learning it. ` +
       `No headings, no lists, no markdown — one paragraph of plain text only.`;
 
-    const gen = await callLLM(apiKey, prompt, 500);
+    const gen = await callLLM(apiKey, prompt, 700);
     if (!gen.ok) {
       console.error("AI provider error:", gen.detail);
       return errorResponse("provider_error", "Service temporarily unavailable.", 502);
