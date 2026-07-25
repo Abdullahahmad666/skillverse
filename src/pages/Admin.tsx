@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { AppShell } from "../components/AppShell";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import { friendlyError } from "../lib/messages";
 import type { Milestone, Resource, RoadmapStep, Skill, Stage, StepLevel } from "../lib/types";
 
@@ -122,10 +123,16 @@ function SkillForm({
   const [title, setTitle] = useState(skill?.title ?? "");
   const [category, setCategory] = useState(skill?.category ?? "");
   const [description, setDescription] = useState(skill?.description ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
-    if (!slug.trim() || !title.trim() || busy) return;
+    if (busy) return;
+    if (!title.trim()) return setError("Title is required.");
+    if (!slug.trim()) return setError("Slug is required (e.g. web-development).");
+    if (!/^[a-z0-9-]+$/.test(slug.trim()))
+      return setError("Slug can only contain lowercase letters, numbers and hyphens.");
+    setError(null);
     setBusy(true);
     const payload = {
       slug: slug.trim(),
@@ -167,6 +174,11 @@ function SkillForm({
           placeholder="One or two sentences describing the path."
         />
       </Labeled>
+      {error && (
+        <p role="alert" className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
       <div className="mt-4 flex gap-2">
         <button onClick={save} disabled={busy} className="btn-primary !py-2 text-sm">
           {busy ? "Saving…" : skill ? "Save changes" : "Create skill"}
@@ -193,6 +205,7 @@ function SkillEditor({
   onDeleted: () => void;
 }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [stages, setStages] = useState<Stage[]>([]);
   const [steps, setSteps] = useState<RoadmapStep[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -213,7 +226,13 @@ function SkillEditor({
   }, [load]);
 
   const deleteSkill = async () => {
-    if (!confirm(`Delete "${skill.title}" and ALL its steps, resources and milestones? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${skill.title}"?`,
+      message: "This removes the skill and ALL its stages, steps, resources and milestones. This cannot be undone.",
+      confirmLabel: "Delete skill",
+      danger: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("skills").delete().eq("id", skill.id);
     if (error) return toast(friendlyError(error, "Couldn't delete the skill."), "error");
     toast("Skill deleted");
@@ -369,6 +388,7 @@ function StepEditor({
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const isNew = !step;
   const [title, setTitle] = useState(step?.title ?? "");
   const [description, setDescription] = useState(step?.description ?? "");
@@ -411,7 +431,13 @@ function StepEditor({
 
   const remove = async () => {
     if (!step) return;
-    if (!confirm(`Delete step "${step.title}" and its resources?`)) return;
+    const ok = await confirm({
+      title: `Delete step "${step.title}"?`,
+      message: "This also deletes the step's resources.",
+      confirmLabel: "Delete step",
+      danger: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("roadmap_steps").delete().eq("id", step.id);
     if (error) return toast(friendlyError(error, "Couldn't delete the step."), "error");
     toast("Step deleted");
@@ -630,6 +656,7 @@ function MilestoneForm({
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const isNew = !milestone;
   const [title, setTitle] = useState(milestone?.title ?? "");
   const [description, setDescription] = useState(milestone?.description ?? "");
@@ -660,7 +687,13 @@ function MilestoneForm({
   };
 
   const remove = async () => {
-    if (!milestone || !confirm(`Delete milestone "${milestone.title}"?`)) return;
+    if (!milestone) return;
+    const ok = await confirm({
+      title: `Delete milestone "${milestone.title}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("milestones").delete().eq("id", milestone.id);
     if (error) return toast(friendlyError(error, "Couldn't delete the milestone."), "error");
     toast("Milestone deleted");
