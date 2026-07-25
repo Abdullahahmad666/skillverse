@@ -33,6 +33,7 @@ const DashboardPage = lazy(() =>
 const RoadmapPage = lazy(() => import("./pages/Roadmap").then((m) => ({ default: m.RoadmapPage })));
 const ExplorePage = lazy(() => import("./pages/Explore").then((m) => ({ default: m.ExplorePage })));
 const ProfilePage = lazy(() => import("./pages/Profile").then((m) => ({ default: m.ProfilePage })));
+const AdminPage = lazy(() => import("./pages/Admin").then((m) => ({ default: m.AdminPage })));
 
 /** Root: signed-in users get the dashboard, visitors get the landing page. */
 function RootRoute() {
@@ -92,6 +93,14 @@ export default function App() {
             element={
               <ProtectedRoute requireOnboarded>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             }
           />

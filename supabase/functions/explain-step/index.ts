@@ -5,7 +5,8 @@
 // simply returns the stored text. Only an admin (ADMIN_USER_IDS secret) can
 // force a fresh AI generation, review it, and persist it with save=true.
 //
-// Secrets used (set via `supabase secrets set`): GEMINI_API_KEY, ADMIN_USER_IDS.
+// Secrets used (set via `supabase secrets set`): OPENROUTER_API_KEY, ADMIN_USER_IDS.
+// Optional: OPENROUTER_MODEL (defaults to "openrouter/free").
 // SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 // The AI key never leaves this function.
 
@@ -13,51 +14,49 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, clientIp, isAdmin } from "../_shared/rateLimit.ts";
 
-// Model used for all generations. Swap for another Gemini model if needed
-// (e.g. "gemini-2.5-flash"); "gemini-2.0-flash" is fast and on the free tier.
-const GEMINI_MODEL = "gemini-2.0-flash";
+// OpenRouter — OpenAI-compatible chat completions. "openrouter/free" auto-routes
+// to a free model; override with the OPENROUTER_MODEL secret to pin a specific
+// one (e.g. "google/gemini-2.0-flash-exp:free").
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODEL = Deno.env.get("OPENROUTER_MODEL")?.trim() || "openrouter/free";
 
 /**
- * Calls Gemini's generateContent endpoint and returns the plain-text output.
- * On an HTTP error it returns { ok: false, detail } so the caller can log the
- * detail server-side and reply with a safe generic message.
+ * Calls OpenRouter's chat/completions endpoint and returns the plain-text
+ * output. On an HTTP error it returns { ok: false, detail } so the caller can
+ * log the detail server-side and reply with a safe generic message.
  */
-async function callGemini(
+async function callLLM(
   apiKey: string,
   prompt: string,
-  maxOutputTokens: number,
+  maxTokens: number,
 ): Promise<{ ok: true; text: string } | { ok: false; detail: string }> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens },
-      }),
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      // Optional attribution (shown on OpenRouter's dashboard/rankings).
+      "X-Title": "SkillVerse",
     },
-  );
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: maxTokens,
+    }),
+  });
   if (!res.ok) {
     return { ok: false, detail: `HTTP ${res.status}: ${await res.text()}` };
   }
   const data = await res.json();
-  const text: string = (data.candidates ?? [])
-    .flatMap((c: { content?: { parts?: { text?: string }[] } }) => c.content?.parts ?? [])
-    .map((p: { text?: string }) => p.text ?? "")
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-  // A 200 with no text means the model produced nothing usable — usually a
-  // token cutoff (finishReason MAX_TOKENS) or a safety block. Surface the raw
-  // response so the reason is visible in the logs instead of a silent 502.
+  const text: string =
+    (data?.choices?.[0]?.message?.content ?? "").toString().trim();
+  // A 200 with no text usually means a token cutoff or a provider-side error
+  // (e.g. a free model temporarily unavailable). Surface the raw response so
+  // the reason is visible in the logs instead of a silent 502.
   if (!text) {
     return {
       ok: false,
-      detail: `empty text from Gemini (HTTP ${res.status}): ${JSON.stringify(data)}`,
+      detail: `empty text from OpenRouter (HTTP ${res.status}): ${JSON.stringify(data)}`,
     };
   }
   return { ok: true, text };
@@ -120,7 +119,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode) {
-      const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
+      const apiKey = Deno.env.get("OPENROUTER_API_KEY")?.trim();
       if (!apiKey) {
         return errorResponse("server_error", "Service temporarily unavailable.", 500);
       }
@@ -141,7 +140,7 @@ Deno.serve(async (req) => {
             `after finishing this step. Questions only, no answers. One per line, ` +
             `numbered like "1." — plain text only, no markdown.`;
 
-      const gen = await callGemini(apiKey, `${instruction}\n\n${context}`, 400);
+      const gen = await callLLM(apiKey, `${instruction}\n\n${context}`, 400);
       if (!gen.ok) {
         console.error("AI provider error:", gen.detail);
         return errorResponse("provider_error", "Service temporarily unavailable.", 502);
@@ -170,7 +169,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY")?.trim();
+    const apiKey = Deno.env.get("OPENROUTER_API_KEY")?.trim();
     if (!apiKey) {
       return errorResponse("server_error", "Service temporarily unavailable.", 500);
     }
@@ -187,7 +186,7 @@ Deno.serve(async (req) => {
       `why it matters in the journey, and one practical tip for learning it. ` +
       `No headings, no lists, no markdown — one paragraph of plain text only.`;
 
-    const gen = await callGemini(apiKey, prompt, 500);
+    const gen = await callLLM(apiKey, prompt, 500);
     if (!gen.ok) {
       console.error("AI provider error:", gen.detail);
       return errorResponse("provider_error", "Service temporarily unavailable.", 502);

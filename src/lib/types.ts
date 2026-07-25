@@ -16,6 +16,8 @@ export interface Profile {
   avatar_url: string | null;
   current_skill_id: string | null;
   show_on_leaderboard: boolean;
+  /** Admins can author roadmap content via /admin. Optional until migration 0009. */
+  is_admin?: boolean;
   created_at: string;
 }
 

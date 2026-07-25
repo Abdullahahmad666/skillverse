@@ -13,7 +13,7 @@ const tabs = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -65,6 +65,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {t.label}
               </NavLink>
             ))}
+            {profile?.is_admin && (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    isActive ? "bg-marigold-tint text-marigold-ink" : "text-fog hover:text-pine"
+                  }`
+                }
+              >
+                Admin
+              </NavLink>
+            )}
           </nav>
 
           <div className="flex items-center gap-2">
