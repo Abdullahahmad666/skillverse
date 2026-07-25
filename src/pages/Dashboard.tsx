@@ -19,6 +19,7 @@ export function DashboardPage() {
   const {
     skill,
     steps,
+    stages,
     resourcesByStep,
     milestones,
     progressByStep,
@@ -38,8 +39,20 @@ export function DashboardPage() {
   const name = profile?.display_name || profile?.username || "there";
   const finished = totalCount > 0 && doneCount === totalCount;
 
+  // Command-center metrics (all from data already loaded — no extra queries).
+  const hoursInvested = Math.round(
+    steps.filter((s) => progressByStep[s.id]?.status === "done").reduce((n, s) => n + (s.estimated_hours ?? 0), 0),
+  );
+  const hoursLeft = Math.ceil(
+    steps.filter((s) => progressByStep[s.id]?.status !== "done").reduce((n, s) => n + (s.estimated_hours ?? 0), 0),
+  );
+  const achievedCount = Object.keys(achievedMilestones).length;
+  const cohortOthers = Math.max((cohortData.standing?.total_members ?? 0) - 1, 0);
+  const percentile =
+    cohortOthers > 0 ? Math.round(((cohortData.standing?.members_behind ?? 0) / cohortOthers) * 100) : 0;
+
   return (
-    <AppShell>
+    <AppShell wide>
       {/* 1 — Current skill + streak */}
       <div className="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -69,33 +82,53 @@ export function DashboardPage() {
         </p>
       )}
 
+      {/* KPI command-center row */}
+      <StatTiles
+        tiles={[
+          { label: "steps done", value: doneCount, suffix: `/${totalCount}`, sub: "completed", icon: <StepsIcon />, accent: "jade" },
+          { label: "hours invested", value: hoursInvested, suffix: "h", sub: "of focused learning", icon: <ClockIcon />, accent: "marigold" },
+          { label: "milestones", value: achievedCount, suffix: `/${milestones.length}`, sub: "projects passed", icon: <FlagIcon />, accent: "violet" },
+          { label: "ahead of cohort", value: percentile, suffix: "%", sub: cohortOthers > 0 ? "of your cohort" : "be the first", icon: <PeopleIcon />, accent: "sky" },
+          { label: "time to finish", value: hoursLeft, suffix: "h", sub: finished ? "you're done!" : "estimated left", icon: <TargetIcon />, accent: "emerald" },
+        ]}
+      />
+
       {/* 2 — Progress hero: ring + step / milestone / time stats */}
-      <Reveal ariaLabel="Overall progress" delay={60} className="mt-6">
+      <Reveal ariaLabel="Overall progress" delay={60} className="mt-4">
         <div className="overflow-hidden rounded-3xl border border-mist bg-card shadow-card">
           <div className="grid gap-2 p-6 sm:grid-cols-[auto_1fr] sm:gap-8 sm:p-7">
             <div className="flex items-center justify-center">
               <ProgressRing percent={progressPercent} />
             </div>
-            <div className="flex flex-col justify-center gap-4">
-              <HeroStat
-                icon={<StepsIcon />}
-                value={finished ? "All steps complete" : `Step ${Math.min(doneCount + 1, totalCount)} of ${totalCount}`}
-                caption={`${doneCount} done · ${totalCount - doneCount} to go`}
-              />
-              <HeroStat
-                icon={<FlagIcon className="text-marigold" />}
-                value={
-                  nextMilestone
-                    ? `${stepsToMilestone(steps, progressByStep, nextMilestone.after_step_id)} steps to “${nextMilestone.title}”`
-                    : "Every milestone passed"
-                }
-                caption={`${Object.keys(achievedMilestones).length} of ${milestones.length} milestones passed`}
-              />
-              <HeroStat
-                icon={<ClockIcon />}
-                value={hoursRemainingLabel(steps, progressByStep)}
-                caption="estimated time remaining"
-              />
+            {/* Unique to the hero — the numbers live in the KPI row above, so
+                here we focus on the story: how far along, and what's next. */}
+            <div className="flex flex-col justify-center gap-3">
+              <div>
+                <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  {finished
+                    ? "Roadmap complete 🎉"
+                    : `You're ${progressPercent}% through ${skill?.title ?? "your roadmap"}`}
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-fog">
+                  {finished
+                    ? "Every step and milestone is done. Revisit anything, or start a new skill."
+                    : "Steady progress beats intensity — here's the milestone you're working toward."}
+                </p>
+              </div>
+              {!finished && nextMilestone && (
+                <div className="flex items-center gap-3 rounded-xl border border-marigold/30 bg-marigold-tint/50 px-3.5 py-3">
+                  <span aria-hidden className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-marigold text-white">
+                    <FlagIcon />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="eyebrow !text-marigold-ink">Next milestone</div>
+                    <div className="truncate font-display text-sm font-bold">{nextMilestone.title}</div>
+                    <div className="font-mono text-[11px] text-fog">
+                      {stepsToMilestone(steps, progressByStep, nextMilestone.after_step_id)} steps away
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <MilestoneTrack
@@ -107,18 +140,11 @@ export function DashboardPage() {
         </div>
       </Reveal>
 
-      {/* 3 — Cohort standing */}
-      <Reveal ariaLabel="Cohort standing" delay={100} className="mt-4">
-        <StandingCard
-          loading={cohortData.loading}
-          label={cohortData.cohort?.label ?? null}
-          totalMembers={cohortData.standing?.total_members ?? 0}
-          membersBehind={cohortData.standing?.members_behind ?? 0}
-        />
-      </Reveal>
-
-      {/* 4 — Next up */}
-      <Reveal ariaLabel="Next step" delay={140} className="mt-4">
+      {/* Bento: full-width primary action, then a balanced 3-card insight
+          row, then full-width cohort sections. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 lg:items-stretch">
+      {/* Next up — primary action, full width */}
+      <Reveal ariaLabel="Next step" delay={100} className="lg:col-span-3">
         <div className="group rounded-3xl border border-mist bg-card p-6 shadow-card transition-shadow hover:shadow-lift">
           <div className="eyebrow mb-2">{finished ? "Roadmap complete" : "Next up"}</div>
           {nextStep ? (
@@ -164,8 +190,23 @@ export function DashboardPage() {
         </div>
       </Reveal>
 
-      {/* 5 — Cohort leaderboard */}
-      <Reveal ariaLabel="Cohort leaderboard" delay={180} className="mt-4">
+      {/* Insight row — progress by stage, recent activity, cohort standing */}
+      <Reveal ariaLabel="Stage progress" delay={140} className="lg:col-span-1">
+        <StageProgress stages={stages} steps={steps} progressByStep={progressByStep} />
+      </Reveal>
+      <Reveal ariaLabel="Recently completed" delay={170} className="lg:col-span-1">
+        <RecentlyCompleted steps={steps} progressByStep={progressByStep} />
+      </Reveal>
+      <Reveal ariaLabel="Cohort standing" delay={200} className="lg:col-span-1">
+        <StandingCard
+          loading={cohortData.loading}
+          totalMembers={cohortData.standing?.total_members ?? 0}
+          membersBehind={cohortData.standing?.members_behind ?? 0}
+        />
+      </Reveal>
+
+      {/* Cohort leaderboard */}
+      <Reveal ariaLabel="Cohort leaderboard" delay={180} className="lg:col-span-3">
         <div className="rounded-3xl border border-mist bg-card p-6 shadow-card">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="font-display text-lg font-bold">Cohort leaderboard</h2>
@@ -203,8 +244,8 @@ export function DashboardPage() {
         </div>
       </Reveal>
 
-      {/* Community */}
-      <Reveal ariaLabel="Community" delay={220} className="mt-4">
+      {/* Community — full-width banner (its natural wide layout) */}
+      <Reveal ariaLabel="Community" delay={220} className="lg:col-span-3">
         <div className="relative overflow-hidden rounded-3xl bg-abyss p-6 text-glow sm:p-7">
           <div
             aria-hidden
@@ -232,6 +273,7 @@ export function DashboardPage() {
           </div>
         </div>
       </Reveal>
+      </div>
     </AppShell>
   );
 }
@@ -243,6 +285,18 @@ export function DashboardPage() {
 type ProgressMap = ReturnType<typeof useRoadmap>["progressByStep"];
 type Steps = ReturnType<typeof useRoadmap>["steps"];
 type Milestones = ReturnType<typeof useRoadmap>["milestones"];
+type StagesList = ReturnType<typeof useRoadmap>["stages"];
+
+function relativeDay(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 function stepsToMilestone(steps: Steps, progress: ProgressMap, anchorStepId: string) {
   const anchor = steps.find((s) => s.id === anchorStepId);
@@ -250,14 +304,6 @@ function stepsToMilestone(steps: Steps, progress: ProgressMap, anchorStepId: str
   return steps.filter(
     (s) => s.order_index <= anchor.order_index && progress[s.id]?.status !== "done",
   ).length;
-}
-
-function hoursRemainingLabel(steps: Steps, progress: ProgressMap) {
-  const hours = steps
-    .filter((s) => progress[s.id]?.status !== "done")
-    .reduce((sum, s) => sum + (s.estimated_hours ?? 0), 0);
-  if (hours <= 0) return "0h left";
-  return `~${Math.ceil(hours)}h left`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -323,28 +369,6 @@ function SnowflakeIcon() {
   );
 }
 
-function HeroStat({
-  icon,
-  value,
-  caption,
-}: {
-  icon: ReactNode;
-  value: string;
-  caption: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <span aria-hidden className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-paper text-jade-deep">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <div className="font-display text-[15px] font-bold leading-snug sm:text-base">{value}</div>
-        <div className="mt-0.5 font-mono text-[11px] text-fog">{caption}</div>
-      </div>
-    </div>
-  );
-}
-
 /** Slim journey bar with milestone flags at their anchor positions. */
 function MilestoneTrack({
   steps,
@@ -403,12 +427,10 @@ function MilestoneTrack({
 
 function StandingCard({
   loading,
-  label,
   totalMembers,
   membersBehind,
 }: {
   loading: boolean;
-  label: string | null;
   totalMembers: number;
   membersBehind: number;
 }) {
@@ -418,13 +440,8 @@ function StandingCard({
   const shown = useCountUp(pct, inView);
 
   return (
-    <div ref={ref} className="rounded-3xl border border-mist bg-card p-6 shadow-card">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="eyebrow">Cohort standing</h2>
-        {label && (
-          <span className="truncate font-mono text-[11px] text-fog">{label}</span>
-        )}
-      </div>
+    <div ref={ref} className="flex h-full flex-col rounded-3xl border border-mist bg-card p-6 shadow-card">
+      <h2 className="eyebrow">Cohort standing</h2>
 
       {loading ? (
         <div className="mt-4 space-y-3">
@@ -432,7 +449,7 @@ function StandingCard({
           <div className="h-2.5 w-full animate-pulse rounded-full bg-mist/70" />
         </div>
       ) : others === 0 ? (
-        <p className="mt-3 text-sm leading-relaxed text-fog">
+        <p className="mt-3 flex-1 text-sm leading-relaxed text-fog">
           You're the trailblazer — cohort comparisons unlock as more learners
           join this month.
         </p>
@@ -455,13 +472,103 @@ function StandingCard({
               style={{ width: `${inView ? Math.max(pct, 2) : 0}%` }}
             />
           </div>
-          <p className="mt-2.5 font-mono text-[11px] text-fog">
-            {totalMembers} member{totalMembers === 1 ? "" : "s"} · measured by
-            milestones passed, not checkboxes
+          <p className="mt-auto pt-4 font-mono text-[11px] text-fog">
+            {totalMembers} member{totalMembers === 1 ? "" : "s"} · by milestones passed
           </p>
         </>
       )}
     </div>
+  );
+}
+
+/** Per-stage (or per-level fallback) completion bars. */
+function StageProgress({
+  stages,
+  steps,
+  progressByStep,
+}: {
+  stages: StagesList;
+  steps: Steps;
+  progressByStep: ProgressMap;
+}) {
+  const useStages = stages.length > 0;
+  const groups = useStages
+    ? stages.map((st) => ({ key: st.id, title: st.title, list: steps.filter((s) => s.stage_id === st.id) }))
+    : (["beginner", "intermediate", "advanced"] as const).map((lvl) => ({
+        key: lvl,
+        title: lvl[0].toUpperCase() + lvl.slice(1),
+        list: steps.filter((s) => (s.level ?? "beginner") === lvl),
+      }));
+
+  const rows = groups
+    .filter((g) => g.list.length > 0)
+    .map((g) => {
+      const done = g.list.filter((s) => progressByStep[s.id]?.status === "done").length;
+      return { key: g.key, title: g.title, done, total: g.list.length, pct: Math.round((done / g.list.length) * 100) };
+    });
+
+  return (
+    <div className="flex h-full flex-col rounded-3xl border border-mist bg-card p-6 shadow-card">
+      <h2 className="font-display text-lg font-bold">{useStages ? "Stage progress" : "Progress by level"}</h2>
+      <div className="mt-4 flex-1 space-y-3.5">
+        {rows.map((r) => (
+          <div key={r.key}>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="truncate text-sm font-medium">{r.title}</span>
+              <span className="flex-none font-mono text-[11px] text-fog">{r.done}/{r.total}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-mist">
+              <div
+                className={`h-full rounded-full ${r.pct === 100 ? "bg-marigold" : "bg-gradient-to-r from-jade to-[#2FC08D]"}`}
+                style={{ width: `${r.pct}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The learner's most recent completed steps — a momentum log. */
+function RecentlyCompleted({ steps, progressByStep }: { steps: Steps; progressByStep: ProgressMap }) {
+  const done = steps
+    .filter((s) => progressByStep[s.id]?.status === "done")
+    .map((s) => ({ step: s, at: progressByStep[s.id]?.completed_at ?? null }))
+    .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""))
+    .slice(0, 4);
+
+  return (
+    <div className="flex h-full flex-col rounded-3xl border border-mist bg-card p-6 shadow-card">
+      <h2 className="font-display text-lg font-bold">Recently completed</h2>
+      {done.length === 0 ? (
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-fog">
+          Finish your first step and it'll appear here — your momentum log.
+        </p>
+      ) : (
+        <ul className="mt-4 flex-1 space-y-3">
+          {done.map(({ step, at }) => (
+            <li key={step.id} className="flex items-center gap-3">
+              <span aria-hidden className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-jade-tint text-jade-deep">
+                <CheckIcon />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{step.title}</div>
+                {at && <div className="font-mono text-[10px] text-fog">{relativeDay(at)}</div>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
+      <path d="M5 12.5 10 17l9-10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -551,6 +658,79 @@ function Chip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
       <span aria-hidden>{icon}</span>
       {children}
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* KPI command-center tiles                                            */
+/* ------------------------------------------------------------------ */
+
+type Accent = "jade" | "marigold" | "violet" | "sky" | "emerald";
+
+const TILE_ACCENT: Record<Accent, string> = {
+  jade: "from-jade to-jade-deep",
+  marigold: "from-marigold to-[#c77f00]",
+  violet: "from-[#a897ff] to-[#7c5cff]",
+  sky: "from-sky-400 to-sky-600",
+  emerald: "from-emerald-400 to-emerald-600",
+};
+
+interface TileDef {
+  label: string;
+  value: number;
+  suffix?: string;
+  sub: string;
+  icon: ReactNode;
+  accent: Accent;
+}
+
+function StatTiles({ tiles }: { tiles: TileDef[] }) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      aria-label="Your stats"
+      className="reveal mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+    >
+      {tiles.map((t) => (
+        <StatTile key={t.label} {...t} inView={inView} />
+      ))}
+    </div>
+  );
+}
+
+function StatTile({ label, value, suffix, sub, icon, accent, inView }: TileDef & { inView: boolean }) {
+  const shown = useCountUp(value, inView);
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-mist bg-card p-4 shadow-card transition-shadow hover:shadow-lift">
+      {/* faint accent wash for depth */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-gradient-to-br ${TILE_ACCENT[accent]} opacity-[0.07] blur-xl`}
+      />
+      <span
+        aria-hidden
+        className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${TILE_ACCENT[accent]} text-white shadow-sm`}
+      >
+        {icon}
+      </span>
+      <div className="mt-3 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
+        {shown}
+        {suffix && <span className="text-fog">{suffix}</span>}
+      </div>
+      <div className="eyebrow mt-0.5">{label}</div>
+      <div className="mt-0.5 font-mono text-[10px] text-fog/80">{sub}</div>
+    </div>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 

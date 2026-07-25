@@ -12,9 +12,19 @@ const tabs = [
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
 
-export function AppShell({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
+export function AppShell({
+  children,
+  dark = false,
+  wide = false,
+}: {
+  children: ReactNode;
+  dark?: boolean;
+  /** Wider content column — used by the dashboard's command-center layout. */
+  wide?: boolean;
+}) {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
+  const widthClass = wide ? "max-w-5xl lg:max-w-6xl" : "max-w-3xl lg:max-w-4xl";
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -43,7 +53,7 @@ export function AppShell({ children, dark = false }: { children: ReactNode; dark
         </div>
       )}
       <header className="sticky top-0 z-20 border-b border-mist/70 bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 lg:max-w-4xl">
+        <div className={`mx-auto flex h-14 items-center justify-between px-4 ${widthClass}`}>
           <NavLink to="/" className="flex items-center gap-2">
             <Logo />
             <span className="font-display text-lg font-bold tracking-tight">
@@ -105,7 +115,7 @@ export function AppShell({ children, dark = false }: { children: ReactNode; dark
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-6 lg:max-w-4xl">{children}</main>
+      <main className={`mx-auto w-full flex-1 px-4 pb-12 pt-6 ${widthClass}`}>{children}</main>
 
       <Footer />
 
