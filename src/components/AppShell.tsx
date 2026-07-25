@@ -25,6 +25,11 @@ export function AppShell({
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const widthClass = wide ? "max-w-5xl lg:max-w-6xl" : "max-w-3xl lg:max-w-4xl";
+  // Admins get an extra Admin tab in the mobile bottom bar too (desktop nav
+  // adds it separately above).
+  const mobileTabs = profile?.is_admin
+    ? [...tabs, { to: "/admin", label: "Admin", icon: ShieldIcon }]
+    : tabs;
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -124,8 +129,8 @@ export function AppShell({
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-mist bg-card/95 backdrop-blur md:hidden"
       >
-        <div className="mx-auto grid max-w-md grid-cols-4">
-          {tabs.map((t) => (
+        <div className={`mx-auto grid max-w-md ${profile?.is_admin ? "grid-cols-5" : "grid-cols-4"}`}>
+          {mobileTabs.map((t) => (
             <NavLink
               key={t.to}
               to={t.to}
@@ -273,6 +278,15 @@ function UserIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <circle cx="12" cy="8" r="3.5" />
       <path d="M4.5 20a7.5 7.5 0 0 1 15 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M12 3l7 3v5c0 4.4-3 8-7 10-4-2-7-5.6-7-10V6l7-3Z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

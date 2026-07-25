@@ -83,6 +83,22 @@
   .field {
     @apply w-full rounded-xl border border-mist bg-card px-4 py-3 text-[15px] text-pine placeholder:text-fog/70 transition-colors focus:border-jade focus:outline-none focus:ring-2 focus:ring-jade/20;
   }
+  /* Browsers paint autofilled inputs with their own (light) background and
+     ignore background-color. Mask it with an inset shadow tied to the theme
+     tokens so dark-mode fields don't flash white on autofill. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: rgb(var(--c-pine));
+    caret-color: rgb(var(--c-pine));
+    -webkit-box-shadow: 0 0 0 1000px rgb(var(--c-card)) inset;
+    box-shadow: 0 0 0 1000px rgb(var(--c-card)) inset;
+    /* Defeats the brief yellow flash Chrome shows before our shadow applies. */
+    transition: background-color 9999s ease-in-out 0s;
+  }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-jade px-5 py-3 font-medium text-white shadow-card transition-all hover:bg-jade-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
