@@ -6,6 +6,7 @@ import { ThemeToggle } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { GENERIC_ERROR, signupError, USERNAME_TAKEN } from "../lib/messages";
 import { logEvent } from "../lib/analytics";
+import { LoadingScreen } from "../components/LoadingScreen";
 import {
   cleanText,
   validateEmail,
@@ -131,16 +132,17 @@ function ContinueWithGoogleButton({
   setError: (message: string | null) => void;
   setOauthBusy: (busy: boolean) => void;
 }) {
-  const location = useLocation();
-
   const click = async () => {
     setError(null);
     setOauthBusy(true);
+    // Remember where to land, then bounce through /auth/callback — a page whose
+    // only job is to wait for the session before routing. Returning straight to
+    // /login raced the session restore, stranding users on the form.
     sessionStorage.setItem(AUTH_REDIRECT_KEY, redirectTarget);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}${location.pathname}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {
@@ -169,6 +171,56 @@ function authRedirectTarget(location: ReturnType<typeof useLocation>): string {
     (location.state as { from?: string } | null)?.from ??
     "/"
   );
+}
+
+/* ---------- OAuth callback ---------- */
+
+/**
+ * Where Google (and any future OAuth provider) redirects back to. Its only job
+ * is to WAIT until supabase has turned the URL's auth params into a real
+ * session, then forward to the intended destination — so a successful sign-in
+ * never strands the user back on the login form (the old redirect-to-/login
+ * raced the session restore and required a second click).
+ *
+ * We resolve on whichever comes first: the SIGNED_IN event that
+ * detectSessionInUrl fires, or an already-present session — with a timeout
+ * fallback so a failed/cancelled sign-in still returns to login.
+ */
+export function AuthCallbackPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let done = false;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      const target = sessionStorage.getItem(AUTH_REDIRECT_KEY) ?? "/";
+      sessionStorage.removeItem(AUTH_REDIRECT_KEY);
+      navigate(ok ? target : "/login", { replace: true });
+    };
+
+    // Provider returned an explicit error (denied consent, etc.) — bail fast.
+    if (new URLSearchParams(window.location.search).get("error")) {
+      finish(false);
+      return;
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) finish(true);
+    });
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) finish(true);
+    });
+    // Safety net: never hang forever if the session never materializes.
+    const timer = window.setTimeout(() => finish(false), 8000);
+
+    return () => {
+      sub.subscription.unsubscribe();
+      window.clearTimeout(timer);
+    };
+  }, [navigate]);
+
+  return <LoadingScreen label="Signing you in" />;
 }
 
 /* ---------- Login ---------- */

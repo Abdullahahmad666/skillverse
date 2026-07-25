@@ -20,6 +20,9 @@ const ForgotPasswordPage = lazy(() =>
 const ResetPasswordPage = lazy(() =>
   import("./pages/AuthPages").then((m) => ({ default: m.ResetPasswordPage })),
 );
+const AuthCallbackPage = lazy(() =>
+  import("./pages/AuthPages").then((m) => ({ default: m.AuthCallbackPage })),
+);
 const LandingPage = lazy(() => import("./pages/Landing").then((m) => ({ default: m.LandingPage })));
 const OnboardingPage = lazy(() =>
   import("./pages/Onboarding").then((m) => ({ default: m.OnboardingPage })),
@@ -56,6 +59,7 @@ export default function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/about" element={<LandingPage />} />
 
           <Route
